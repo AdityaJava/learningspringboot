@@ -1,0 +1,13 @@
+public class User{
+
+    public void updateUser(){
+        //1. Update DB
+        //2. External API call
+        //3. update DB
+    }
+}
+
+1. @Transactional will cause an issue here because external call is involved which will take sometime
+2. So now we are holding a DB connection for that much time. And suppose at the time of peak traffic where we have to open a large number
+   of DB connections this API call will be an bottleneck and this will choke our system in peak hours
+3. In this case programmatic can help us
