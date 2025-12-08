@@ -1,0 +1,51 @@
+Propagation.REQUIRED
+--------------------
+if (parent transaction exists)
+    join parent transaction;
+else
+    create new transaction;
+
+
+Propagation.REQUIRES_NEW
+------------------------
+always suspend parent transaction (if exists);
+create brand new transaction;
+
+
+Propagation.SUPPORTS
+--------------------
+if (parent transaction exists)
+    join parent transaction;
+else
+    run without transaction;
+
+
+Propagation.NOT_SUPPORTED
+------------------------
+if (parent transaction exists)
+    suspend parent transaction;
+run without transaction;
+
+
+Propagation.MANDATORY
+---------------------
+if (parent transaction exists)
+    join parent transaction;
+else
+    throw exception (transaction required);
+
+
+Propagation.NEVER
+-----------------
+if (parent transaction exists)
+    throw exception (transaction not allowed);
+else
+    run without transaction;
+
+
+Propagation.NESTED
+------------------
+if (parent transaction exists)
+    create savepoint inside parent transaction;
+else
+    create new transaction;
