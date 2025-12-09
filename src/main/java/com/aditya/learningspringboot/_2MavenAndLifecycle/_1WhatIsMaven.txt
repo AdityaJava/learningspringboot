@@ -1,0 +1,16 @@
+1. It is project management tool. Helps developer with
+ - Build generation
+ - Dependency resolution
+ - Documentation etc.
+
+2. Maven uses POM(Project Object Model)
+
+3. When maven command given it looks for pom.xml in the current dir and get needed config
+mvn install
+mvn deploy
+
+
+------------------------------------------
+Problems with ANT
+
+1. We need to give it what to do and how to do. In maven we need to only give what to do.
