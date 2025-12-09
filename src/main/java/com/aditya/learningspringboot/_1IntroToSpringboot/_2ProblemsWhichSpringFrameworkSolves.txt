@@ -1,0 +1,83 @@
+1.SPRING SOLVES THESE PROBLEMS OF TRADITIONAL SERVLET APPS:
+
+  1) DEPENDENCY CREATION & BOILERPLATE
+     Traditional:
+         UserService s = new UserService(new UserRepo());
+     Spring:
+         @Autowired UserService s;
+
+  2) NO MVC ARCHITECTURE
+     Traditional:
+         Servlet → manually parse request, set response
+     Spring:
+         @RestController
+         @GetMapping("/hello")
+         public String hi() { return "hi"; }
+
+  3) MANUAL TRANSACTION MANAGEMENT
+     Traditional JDBC:
+         conn.setAutoCommit(false);
+         try { ...; conn.commit(); } catch { conn.rollback(); }
+     Spring:
+         @Transactional
+         public void update(){}
+
+  4) JDBC BOILERPLATE & RESOURCE LEAKS
+     Traditional:
+         Connection con = DriverManager.getConnection(...)
+         PreparedStatement ps = con.prepareStatement(...)
+         ResultSet rs = ps.executeQuery()
+     Spring:
+         @Autowired JdbcTemplate template;
+         template.query("select * from user", rowMapper);
+
+  5) NO CENTRAL ERROR HANDLING
+     Traditional:
+         try { ... } catch(Exception e){ forward("/error.jsp") }
+     Spring:
+         @ControllerAdvice
+         public class GlobalHandler {}
+
+  6) HARD TESTING (TIGHT COUPLING)
+     Traditional:
+         new Service(new Repo());   // cannot mock easily
+     Spring:
+         @MockBean Repo repo;
+
+  7) NO SECURITY LAYER
+     Traditional:
+         Write Filters manually
+     Spring Security:
+         @EnableWebSecurity
+         class Config extends WebSecurityConfigurerAdapter {}
+
+  8) NO AOP (LOGGING / SECURITY / TRANSACTIONS)
+     Traditional:
+         logging in every method
+     Spring:
+         @Aspect
+         @Before("execution(* com.app.*.*(..))")
+
+  9) NO JSON/XML AUTOMATIC CONVERSION
+     Traditional:
+         Use Gson/Jackson manually
+     Spring:
+         @RestController returns JSON automatically
+
+  10) NO BUILT-IN VALIDATION
+      Traditional:
+          if(name == null || name.isEmpty()) { ... }
+      Spring:
+          public void register(@Valid @RequestBody User u)
+
+  11) COMPLEX XML CONFIGURATION
+      Traditional:
+          web.xml, jdbc.xml, security.xml
+      Spring Boot:
+          application.properties only
+
+  12) NO BUILT-IN LAYERED DESIGN
+      Traditional:
+          Everything inside servlet
+      Spring:
+          Controller → Service → Repository layers by default
