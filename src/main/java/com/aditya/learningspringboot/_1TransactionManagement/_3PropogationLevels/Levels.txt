@@ -49,3 +49,6 @@ if (parent transaction exists)
     create savepoint inside parent transaction;
 else
     create new transaction;
+
+
+use TransactionSynchronizationManager to check if active and name

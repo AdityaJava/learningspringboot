@@ -1,0 +1,71 @@
+1. It tells, how the changes made by one transaction are visible to other transactions running in parallel
+
+
+Isolation Levels in Spring
+==========================
+
+1. Isolation.DEFAULT
+--------------------
+- Use the database's default isolation level.
+- Usually READ_COMMITTED in most DBs.
+- Recommended unless you need special consistency.
+
+2. Isolation.READ_UNCOMMITTED
+------------------------------
+- Lowest isolation level.
+- Allows:
+    * Dirty Reads      (read uncommitted data)
+    * Non-repeatable Reads
+    * Phantom Reads
+- Faster but unsafe.
+
+3. Isolation.READ_COMMITTED
+---------------------------
+- Prevents Dirty Reads.
+- Allows:
+    * Non-repeatable Reads
+    * Phantom Reads
+- Most commonly used level.
+- Good balance of consistency + performance.
+
+4. Isolation.REPEATABLE_READ
+-----------------------------
+- Prevents:
+    * Dirty Reads
+    * Non-repeatable Reads
+- Allows:
+    * Phantom Reads (in some DBs)
+- Ensures the same row read twice gives the same value.
+- Useful in financial transactions.
+
+5. Isolation.SERIALIZABLE
+-------------------------
+- Highest isolation level.
+- Prevents:
+    * Dirty Reads
+    * Non-repeatable Reads
+    * Phantom Reads
+- Full consistency.
+- Most expensive (locks entire range/table).
+- Very slow; avoid unless absolutely needed.
+
+Common Real-world Recommendations
+---------------------------------
+- Use DEFAULT (or READ_COMMITTED) for most web apps.
+- Use REPEATABLE_READ for critical transactions like:
+      * transfer money
+      * inventory locking
+- Avoid READ_UNCOMMITTED (unsafe).
+- Avoid SERIALIZABLE unless your system requires strict correctness.
+
+Quick Summary Table
+-------------------
+Level              Dirty   Non-repeatable   Phantom
+---------------------------------------------------
+READ_UNCOMMITTED    YES          YES          YES
+READ_COMMITTED      NO           YES          YES
+REPEATABLE_READ     NO           NO           YES*
+SERIALIZABLE        NO           NO           NO
+(* depends on DB)
+
+Concurrency is hcgh
