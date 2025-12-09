@@ -69,4 +69,4 @@ SERIALIZABLE        NO           NO           NO
 (* depends on DB)
 
 Concurrency is high at READ_UNCOMMITTED and decreases from it to SERIALIZABLE
-. That means more threads can run in parallel when concurrency is high
+. That means more threads can run in parallel when concurrency is high but might also cause problems in problem.txt

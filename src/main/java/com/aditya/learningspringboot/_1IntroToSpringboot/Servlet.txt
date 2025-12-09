@@ -1,0 +1,50 @@
+package com.example;
+
+import java.io.IOException;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+public class HelloServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+
+        String path = req.getPathInfo(); // gives /endpoint1 or /endpoint2
+
+        resp.setContentType("text/plain");
+
+        if ("/endpoint1".equals(path)) {
+            resp.getWriter().write("Response from endpoint1");
+        } else if ("/endpoint2".equals(path)) {
+            resp.getWriter().write("Response from endpoint2");
+        } else {
+            resp.getWriter().write("Unknown endpoint");
+        }
+    }
+}
+
+==============================================================================================
+Web.xml
+==============================================================================================
+
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0">
+
+    <servlet>
+        <servlet-name>HelloServlet</servlet-name>
+        <servlet-class>com.example.HelloServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>HelloServlet</servlet-name>
+        <!-- Maps all URLs under /hello/* -->
+        <url-pattern>/hello/*</url-pattern>
+    </servlet-mapping>
+
+</web-app>
