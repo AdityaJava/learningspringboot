@@ -1,0 +1,54 @@
+// Why DTOs are important — key reasons in code comments
+
+/*
+1. Encapsulation & Abstraction:
+   - Hide internal Entity structure from clients.
+   - Prevent exposing sensitive data.
+
+2. Decoupling Layers:
+   - Separate API layer from persistence layer.
+   - Changes in Entities won't break API contracts.
+
+3. Security:
+   - Avoid sending sensitive fields (e.g., passwords) to clients.
+
+4. Performance Optimization:
+   - Send only required data, reducing payload size.
+
+5. Data Validation and Formatting:
+   - Match API input/output formats easily.
+
+6. Support for Different Views:
+   - Use multiple DTOs for different API responses (summary, detail).
+*/
+
+// Example Entity (contains sensitive/internal data)
+@Entity
+public class UserEntity {
+    private Long id;
+    private String name;
+    private String email;
+    private String password;           // Sensitive - don't expose!
+    private LocalDateTime createdAt;  // Internal data
+    // getters and setters
+}
+
+// Corresponding DTO (only exposes safe fields)
+public class UserDTO {
+    private Long id;
+    private String name;
+    private String email;
+    // No password or createdAt here
+    // getters and setters
+}
+
+// Benefits in usage:
+// Controller returns UserDTO, protecting sensitive data from exposure
+@RestController
+public class UserController {
+    @GetMapping("/users/{id}")
+    public UserDTO getUser(@PathVariable Long id) {
+        UserEntity user = userRepository.findById(id).get();
+        return userMapper.toDTO(user);  // Converts Entity to safe DTO
+    }
+}
