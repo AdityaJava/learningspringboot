@@ -1,0 +1,4 @@
+1. Dependency management : No need for adding different dependencies separately and also there compatible version headache
+2. Autoconfiguration: No need to separately oconfiguring DispatcherServlet, AppConfig, EnableWebMVC, ComponentScan. Spring boot adds it internally by default
+3. Embedded Server:  In Spring mvc we need to build WAR and then deploy it to servlet container . But in spring boot container is already
+ embedded we don't need to do all this stuff. Just run the app

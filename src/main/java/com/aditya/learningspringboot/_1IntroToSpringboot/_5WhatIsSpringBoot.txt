@@ -1,0 +1,4 @@
+1. It provides a quick way to create a production ready app.
+2. It is based on Spring Framework
+3. It supports Convention over configuration
+4. It also helps to run a app as quick as possible.

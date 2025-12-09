@@ -1,0 +1,77 @@
+// ==================== AppConfig.java ====================
+package com.example.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.view.InternalResourceViewResolver;
+
+@EnableWebMvc
+@Configuration
+@ComponentScan(basePackages = "com.example")
+public class AppConfig implements WebMvcConfigurer {
+
+    @Bean
+    public InternalResourceViewResolver viewResolver() {
+        InternalResourceViewResolver vr = new InternalResourceViewResolver();
+        vr.setPrefix("/WEB-INF/views/");
+        vr.setSuffix(".jsp");
+        return vr;
+    }
+}
+
+
+// ==================== WebAppInitializer.java ====================
+package com.example.config;
+
+import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
+
+public class WebAppInitializer
+        extends AbstractAnnotationConfigDispatcherServletInitializer {
+
+    @Override
+    protected Class<?>[] getRootConfigClasses() {
+        return null; // DB configs go here if needed
+    }
+
+    @Override
+    protected Class<?>[] getServletConfigClasses() {
+        return new Class<?>[]{ AppConfig.class };
+    }
+
+    // This means any request should be handled by Dispatcher servlet
+    @Override
+    protected String[] getServletMappings() {
+        return new String[]{ "/" }; // DispatcherServlet mapping
+    }
+}
+
+
+// ==================== HomeController.java ====================
+package com.example.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class HomeController {
+
+    @GetMapping("/hello")
+    public String hello(Model model) {
+        model.addAttribute("msg", "Hello Spring MVC!");
+        return "hello";  // resolves to: /WEB-INF/views/hello.jsp
+    }
+}
+
+
+// ==================== hello.jsp (place inside /WEB-INF/views/) ====================
+/*
+<html>
+<body>
+<h2>${msg}</h2>
+</body>
+</html>
+*/
