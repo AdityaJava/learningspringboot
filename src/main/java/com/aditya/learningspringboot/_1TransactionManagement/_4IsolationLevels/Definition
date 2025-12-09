@@ -60,7 +60,7 @@ Common Real-world Recommendations
 
 Quick Summary Table
 -------------------
-Level              Dirty   Non-repeatable   Phantom
+Level              DirtyRead   Non-repeatable   Phantom
 ---------------------------------------------------
 READ_UNCOMMITTED    YES          YES          YES
 READ_COMMITTED      NO           YES          YES
@@ -68,4 +68,5 @@ REPEATABLE_READ     NO           NO           YES*
 SERIALIZABLE        NO           NO           NO
 (* depends on DB)
 
-Concurrency is hcgh
+Concurrency is high at READ_UNCOMMITTED and decreases from it to SERIALIZABLE
+. That means more threads can run in parallel when concurrency is high

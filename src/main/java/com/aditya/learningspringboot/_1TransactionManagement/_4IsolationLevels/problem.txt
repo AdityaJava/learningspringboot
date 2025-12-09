@@ -1,0 +1,105 @@
+# Transaction Anomalies in Spring Boot
+
+=====================================
+1) DIRTY READ  (Isolation: READ_UNCOMMITTED)
+=====================================
+Definition:
+A transaction reads data that another transaction has modified but not yet committed.
+If the other transaction rolls back → you read wrong (dirty) data.
+
+Example:
+T1: UPDATE balance = 1000 (not committed)
+T2: SELECT balance → reads 1000
+T1: ROLLBACK
+T2 read invalid data.
+
+Spring Boot:
+@Transactional(isolation = Isolation.READ_UNCOMMITTED)
+public Account getBalance(Long id) {
+    return repo.findById(id).get();   // may read uncommitted data
+}
+
+
+=====================================
+2) NON-REPEATABLE READ  (Isolation: READ_COMMITTED)
+=====================================
+Definition:
+Same row read twice returns different values within one transaction
+because another transaction committed an update in between.
+
+Example:
+T1: SELECT stock → 10
+T2: UPDATE stock=0; COMMIT
+T1: SELECT stock → 0 (different value)
+
+Spring Boot:
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public void checkStock(Long productId) {
+    Product p1 = repo.findById(productId).get(); // stock = 10
+
+    // another txn updates stock to 0
+
+    Product p2 = repo.findById(productId).get(); // stock = 0 (changed)
+}
+
+
+=====================================
+3) PHANTOM READ  (Isolation: REPEATABLE_READ)
+=====================================
+Definition:
+Same query returning multiple rows gives different results
+because another transaction inserted/deleted rows.
+
+Example:
+T1: SELECT * FROM employees WHERE dept='IT' → 5 rows
+T2: INSERT new employee; COMMIT
+T1: SELECT again → 6 rows (phantom row appeared)
+
+Spring Boot:
+@Transactional(isolation = Isolation.REPEATABLE_READ)
+public List<Employee> getEmployees() {
+    List<Employee> list1 = repo.findByDept("IT"); // 5 rows
+
+    // another txn inserts employee
+
+    List<Employee> list2 = repo.findByDept("IT"); // 6 rows (phantom)
+}
+
+
+=====================================
+SUMMARY
+=====================================
+Dirty Read → reads uncommitted data
+Non-repeatable Read → same row changes between reads
+Phantom Read → new/missing rows appear in repeated queries
+
+------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+
+
+# DEFAULT ISOLATION LEVEL IN SPRING BOOT
+
+If you write:
+
+@Transactional
+public void serviceMethod() {}
+
+Then Spring uses:
+
+👉 **The database's default isolation level**
+(Spring does NOT override it)
+
+=====================================
+# Common Databases and Their Defaults
+=====================================
+
+MySQL (InnoDB)        → REPEATABLE_READ
+PostgreSQL            → READ_COMMITTED
+Oracle                → READ_COMMITTED
+SQL Server            → READ_COMMITTED
+
+=====================================
+# Final Point
+=====================================
+If you don't specify `isolation = ...`
+Spring simply uses **whatever your DB uses by default**.
