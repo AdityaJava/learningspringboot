@@ -1,0 +1,80 @@
+# LOCKING BEHAVIOR AT EACH ISOLATION LEVEL
+# (Crystal clear, simple words)
+
+====================================================================
+1) READ_UNCOMMITTED
+====================================================================
+READ:
+- No shared locks
+- Can read uncommitted changes of other transactions
+
+WRITE:
+- Writes take exclusive lock until commit
+
+Meaning:
+👉 Reads never lock anything.
+👉 Can see dirty/uncommitted data.
+
+====================================================================
+2) READ_COMMITTED
+====================================================================
+READ:
+- Takes shared lock during SELECT
+- Releases shared lock immediately after read. That is it doesn't wait for commit or rollback
+
+WRITE:
+- Exclusive lock held until commit
+
+Meaning:
+👉 You always see committed data.
+👉 But if you read same row twice, value may change.
+
+====================================================================
+3) REPEATABLE_READ
+====================================================================
+READ:
+- Takes shared lock and **keeps it for entire transaction**
+- Prevents other transactions from updating the rows you read
+
+WRITE:
+- Exclusive lock until commit
+
+(MySQL only)
+- Uses "next-key locks" = row lock + gap lock
+
+Meaning:
+👉 If you read a row, nobody can change it until your txn ends.
+👉 In MySQL, also prevents phantom rows using gap locks.
+
+====================================================================
+4) SERIALIZABLE
+====================================================================
+READ:
+- Takes range locks / predicate locks
+- Prevents inserts/deletes in the range you query
+
+WRITE:
+- Exclusive lock until commit
+
+Meaning:
+👉 Highest safety.
+👉 Makes transactions run as if one-by-one.
+
+====================================================================
+# THE CLEANEST POSSIBLE SUMMARY TABLE
+====================================================================
+
+| Isolation Level    | Shared Lock | Shared Lock Duration | Prevents Updates to Read Rows? | Prevents New Rows Appearing? |
+|--------------------|-------------|-----------------------|----------------------------------|-------------------------------|
+| READ_UNCOMMITTED   | ❌ No       | N/A                   | ❌ No                            | ❌ No                         |
+| READ_COMMITTED     | ✔ Yes       | Only during read      | ❌ No                            | ❌ No                         |
+| REPEATABLE_READ    | ✔ Yes       | Full transaction      | ✔ Yes                           | MySQL ✔, Postgres ❌          |
+| SERIALIZABLE       | ✔ Yes       | Full transaction + range | ✔ Yes                       | ✔ Yes                        |
+
+====================================================================
+# 1-LINE MEMORY HACK (Correct & Clear)
+====================================================================
+READ_UNCOMMITTED → Reads don’t lock
+READ_COMMITTED   → Reads lock briefly
+REPEATABLE_READ  → Reads lock until commit
+SERIALIZABLE     → Locks rows + ranges
