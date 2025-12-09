@@ -1,0 +1,167 @@
+================ MAVEN BUILD LIFECYCLE (NOTES) ================
+
+Maven has 3 lifecycles:
+1) default (builds the project)
+2) clean (cleans build output)
+3) site (documentation)
+
+We normally deal with the DEFAULT lifecycle.
+
+---------------------------------------------------------------
+DEFAULT LIFECYCLE PHASES (in order)
+---------------------------------------------------------------
+
+1. validate
+   - Check project structure is correct.
+   - Check POM is correct, dependencies available etc.
+   - Example custom task: enforce Java version, check folder structure.
+
+2. compile
+   - Compile main source code (src/main/java).
+   - convert java code to bytecode. .class files generation
+
+3. test
+   - Run unit tests using Surefire.
+   - Doesn’t require packaging to be done.
+
+4. package
+   - Create the artifact: JAR / WAR / EAR.
+   - Spring Boot: creates fat JAR during this phase.
+
+5. verify
+   - Run additional checks on the packaged artifact.
+   - Often used for integration test verification.
+   - PMD analysis plugin can be used to find unused variables, unused imports, empty catch block, No usage of object, finds duplicate code etc
+   <build>
+       <plugins>
+           <!-- PMD Plugin for code quality checks -->
+           <plugin>
+               <groupId>org.apache.maven.plugins</groupId>
+               <artifactId>maven-pmd-plugin</artifactId>
+               <version>3.21.2</version>
+               <executions>
+                   <execution>
+                       <phase>verify</phase>
+                       <goals>
+                           <goal>check</goal>
+                       </goals>
+                   </execution>
+               </executions>
+               <configuration>
+                   <!-- Fail build if violations are found -->
+                   <failOnViolation>true</failOnViolation>
+
+                   <!-- Use built-in PMD rules OR custom ruleset -->
+                   <rulesets>
+                       <ruleset>rulesets/java/quickstart.xml</ruleset>
+                   </rulesets>
+
+                   <!-- Optional: show suppressed violations -->
+                   <printFailingErrors>true</printFailingErrors>
+               </configuration>
+           </plugin>
+       </plugins>
+   </build>
+
+6. install
+   - Put the packaged artifact into the local Maven repo (~/.m2/repository).
+   - will be in com.aditya.learningspringboot
+   - Allows other local projects to use it.
+
+7. deploy
+   - Upload the artifact to a remote repository (Nexus, Artifactory).
+
+<distributionManagement>
+
+    <!-- Where your final artifact (jar/war) will be deployed -->
+    <repository>
+        <id>releases-repo</id>
+        <url>https://your-company-repo.com/repository/maven-releases/</url>
+    </repository>
+
+    <!-- Where your SNAPSHOT versions will be deployed -->
+    <snapshotRepository>
+        <id>snapshots-repo</id>
+        <url>https://your-company-repo.com/repository/maven-snapshots/</url>
+    </snapshotRepository>
+
+    <!-- Optional: Site deployment (project documentation) -->
+    <!--
+    <site>
+        <id>project-site</id>
+        <url>scp://yourhost.com/www/docs</url>
+    </site>
+    -->
+
+</distributionManagement>
+
+---------------------------------------------------------------
+VERY IMPORTANT RULE
+---------------------------------------------------------------
+When you run any phase:
+    mvn <phase>
+Maven *always executes all previous phases in order* before it.
+
+Example:
+    mvn package
+    → validate → compile → test → package
+
+---------------------------------------------------------------
+PHASES vs GOALS
+---------------------------------------------------------------
+- Phase = step in the lifecycle.
+- Goal = actual task from a plugin.
+- A phase can have multiple goals attached to it.
+
+Example:
+    validate phase:
+      - maven-enforcer-plugin:enforce
+      - custom structure check plugin
+
+    package phase:
+      - maven-jar-plugin:jar
+      - spring-boot-maven-plugin:repackage
+
+---------------------------------------------------------------
+EDITING OR CUSTOMIZING PHASES
+---------------------------------------------------------------
+You “edit” a phase by binding plugin goals to it.
+
+Examples:
+- Add a code formatter goal to "validate"
+- Add a code coverage goal to "test"
+- Add an integration-test runner goal to "verify"
+
+You are NOT modifying Maven itself — you are attaching your tasks to phases.
+
+---------------------------------------------------------------
+CLEAN LIFECYCLE
+---------------------------------------------------------------
+clean → deletes target/ folder
+
+---------------------------------------------------------------
+SITE LIFECYCLE
+---------------------------------------------------------------
+site → generates project documentation
+
+---------------------------------------------------------------
+MOST COMMON PHASE COMMANDS
+---------------------------------------------------------------
+mvn validate
+mvn compile
+mvn test
+mvn package
+mvn verify
+mvn install
+mvn deploy
+
+---------------------------------------------------------------
+SUMMARY
+---------------------------------------------------------------
+• Maven lifecycle = ordered phases.
+• Running later phase automatically runs all earlier phases.
+• Each phase has multiple goals/tasks.
+• You customize/“edit” a phase by binding plugin goals to it.
+• Useful for enforcing rules, formatting code, generating reports, testing etc.
+
+===============================================================
