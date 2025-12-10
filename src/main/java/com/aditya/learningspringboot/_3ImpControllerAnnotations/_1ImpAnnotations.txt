@@ -1,0 +1,163 @@
+==============================
+IMPORTANT SPRING CONTROLLER ANNOTATIONS – NOTES + EXAMPLES
+==============================
+
+1) @Controller
+---------------
+• Marks a class as a Spring MVC Controller.
+• Used to return VIEW pages (JSP, Thymeleaf).
+• Does NOT return JSON unless @ResponseBody is added.
+
+Example:
+@Controller
+public class HomeController {
+    @GetMapping("/home")
+    public String home() {
+        return "home"; // returns home.jsp or home.html
+    }
+}
+
+2) @RestController
+-------------------
+• @Controller + @ResponseBody
+• Used for REST APIs.
+• All methods return JSON/XML.
+
+Example:
+@RestController
+@RequestMapping("/api")
+public class UserController {
+    @GetMapping("/users")
+    public List<String> getUsers() {
+        return List.of("A", "B");
+    }
+}
+
+3) @RequestMapping
+-------------------
+• Used at CLASS or METHOD level.
+• Maps URL + HTTP method + params + headers.
+• Supports GET, POST, PUT, DELETE.
+
+Example:
+@Controller
+@RequestMapping("/products")
+public class ProductController {
+
+    @RequestMapping(value="/all", method=RequestMethod.GET)
+    public String getAllProducts() {
+        return "products";
+    }
+}
+
+4) @GetMapping / @PostMapping / @PutMapping /
+   @DeleteMapping / @PatchMapping
+----------------------------------------------
+• Shortcut annotations for HTTP verbs.
+• Cleaner than @RequestMapping.
+
+Example:
+@RestController
+public class BookController {
+
+    @GetMapping("/books")
+    public List<String> getBooks() { return List.of("Book1", "Book2"); }
+
+    @PostMapping("/books")
+    public String addBook(@RequestBody String name) {
+        return "Added: " + name;
+    }
+}
+
+5) @PathVariable
+-----------------
+• Reads values from URL path.
+
+Example:
+@GetMapping("/user/{id}")
+public String getUser(@PathVariable int id) {
+    return "User id = " + id;
+}
+
+6) @RequestParam
+-----------------
+• Reads query parameters.
+
+Example:
+@GetMapping("/search")
+public String search(@RequestParam String keyword) {
+    return "Searching for: " + keyword;
+}
+
+7) @RequestBody
+----------------
+• Converts JSON → Java Object
+• Typically used in POST/PUT.
+
+Example:
+@PostMapping("/create")
+public User save(@RequestBody User user) {
+    return user;
+}
+
+8) @ResponseBody
+-----------------
+• Returns data directly as JSON (used with @Controller).
+• Not required inside @RestController (auto applied).
+
+Example:
+@Controller
+public class TestController {
+
+    @GetMapping("/hello")
+    @ResponseBody
+    public String hello() {
+        return "Hello!";
+    }
+}
+
+9) @ModelAttribute
+-------------------
+• Binds form parameters to Java object (for MVC forms).
+• Also used to add common attributes to model.
+
+Example:
+@PostMapping("/register")
+public String register(@ModelAttribute User user) {
+    return "success";
+}
+
+10) @InitBinder
+----------------
+• Custom binding logic for request parameters → model.
+• Mostly used to register custom editors / validators.
+
+Example:
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    binder.registerCustomEditor(Date.class,
+       new CustomDateEditor(new SimpleDateFormat("yyyy-MM-dd"), false));
+}
+
+11) @CrossOrigin
+-----------------
+• Enables CORS for REST APIs.
+
+Example:
+@CrossOrigin(origins = "http://localhost:3000")
+@GetMapping("/data")
+public String data() { return "Allowed"; }
+
+12) @ExceptionHandler
+----------------------
+• Handles specific exceptions at controller level.
+
+Example:
+@ExceptionHandler(NullPointerException.class)
+public String handleNPE() {
+    return "NPE occurred";
+}
+
+==============================
+END OF NOTES
+==============================
