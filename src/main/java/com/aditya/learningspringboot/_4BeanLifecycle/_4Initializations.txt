@@ -1,0 +1,198 @@
+
+=============================================
+TYPES OF BEAN INITIALIZATION IN SPRING
+=============================================
+
+Spring creates beans in TWO ways:
+
+=============================================
+1) EAGER INITIALIZATION (Default)
+=============================================
+- Spring creates the bean DURING APPLICATION STARTUP.
+- All singleton beans are created immediately.
+- Happens automatically unless @Lazy is used.
+
+Example (Eager Bean):
+---------------------
+@Component
+public class EmailService {
+    public EmailService() {
+        System.out.println("EmailService created at startup");
+    }
+}
+
+Explanation:
+-----------
+- EmailService bean is created immediately on context load.
+
+=============================================
+2) LAZY INITIALIZATION (@Lazy)
+=============================================
+- Bean is NOT created at startup.
+- Bean is created ONLY WHEN first used/requested.
+- Saves startup time and avoids unnecessary object creation.
+
+Add @Lazy:
+----------
+@Component
+@Lazy
+public class SmsService {
+    public SmsService() {
+        System.out.println("SmsService created only when accessed");
+    }
+}
+
+Example of usage:
+-----------------
+@Component
+public class NotificationController {
+
+    @Autowired
+    private SmsService smsService;   // SmsService created only when used
+
+    public void send() {
+        smsService.sendMessage();    // Bean initialized here
+    }
+}
+
+=============================================
+Why @Lazy Is Used?
+=============================================
+✔ Faster application startup
+✔ Load heavy beans only when needed
+✔ Break circular dependencies
+✔ Reduce memory usage
+
+=============================================
+Where @Lazy Can Be Used?
+=============================================
+1) On Class → Lazy Bean
+2) On Dependency Injection → Lazy Loading of field/constructor
+3) On @Bean Method → Lazy Factory Method
+
+Example:
+--------
+@Configuration
+public class AppConfig {
+
+    @Bean
+    @Lazy
+    public ReportService reportService() {
+        return new ReportService();
+    }
+}
+
+=====================================
+Spring @Lazy Annotation - Notes
+=====================================
+
+1) What is @Lazy?
+-----------------
+- @Lazy tells Spring to NOT create the bean at startup.
+- Instead, the bean is created ONLY when it is first needed.
+- Useful to improve startup time or break circular dependencies.
+
+-------------------------------------
+2) Default behavior
+-------------------------------------
+- By default, Spring beans are EAGER.
+  → meaning Spring creates all singleton beans during application startup.
+
+- When you add @Lazy:
+  → the bean becomes LAZY-INSTANTIATED.
+  → meaning Spring creates it only when first requested.
+
+-------------------------------------
+3) Where @Lazy can be used?
+-------------------------------------
+A) On a class level (bean becomes lazy)
+B) On a field/constructor injection (injected lazily)
+C) On @Configuration methods (@Bean)
+
+-------------------------------------
+4) Example 1: @Lazy on Class (Lazy Bean)
+-------------------------------------
+@Component
+@Lazy
+public class EmailService {
+    public EmailService() {
+        System.out.println("EmailService bean created");
+    }
+}
+
+@Component
+public class UserService {
+
+    private final EmailService emailService;
+
+    public UserService(EmailService emailService) {
+        this.emailService = emailService;
+    }
+}
+
+Explanation:
+-----------
+- EmailService bean will NOT be created at startup.
+- It will be created only when UserService tries to use emailService.
+
+-------------------------------------
+5) Example 2: Lazy Injection
+-------------------------------------
+@Component
+public class PaymentService {
+
+    @Lazy
+    @Autowired
+    private NotificationService notificationService;
+}
+
+Explanation:
+-----------
+- PaymentService is created at startup.
+- NotificationService is NOT created at startup.
+- Spring creates NotificationService only when paymentService.notificationService is accessed.
+
+-------------------------------------
+6) Example 3: @Lazy on @Bean Method
+-------------------------------------
+@Configuration
+public class AppConfig {
+
+    @Bean
+    @Lazy
+    public SmsService smsService() {
+        return new SmsService();
+    }
+}
+
+Explanation:
+-----------
+- SmsService bean will be instantiated only when requested from Spring container.
+
+-------------------------------------
+7) Use Cases for @Lazy
+-------------------------------------
+✔ Improve application startup time
+✔ Break circular dependencies
+✔ Load heavy beans only when needed
+✔ Avoid unnecessary resource initialization
+
+-------------------------------------
+8) Common Pitfall
+-------------------------------------
+If you use @Lazy for prototype beans → no effect
+Prototype beans are already lazy by nature.
+
+-------------------------------------
+9) Checking Lazy Loading in Logs
+-------------------------------------
+If you print in constructor:
+public EmailService() {
+    System.out.println("Created");
+}
+
+It will print only when bean is first used.
+
+=====================================
+END OF NOTES
+=====================================

@@ -1,0 +1,102 @@
+===========================
+SPRING BEAN LIFE CYCLE NOTES
+===========================
+
+A Bean in Spring goes through the following lifecycle stages:
+
+1. Instantiation
+   - Spring creates the bean instance using the constructor.
+
+2. Populate Properties (Dependency Injection)
+   - Spring injects dependencies via @Autowired or constructor/setters.
+
+3. BeanNameAware (Optional)
+   - If bean implements BeanNameAware, Spring calls setBeanName().
+
+4. BeanFactoryAware / ApplicationContextAware (Optional)
+   - If implemented, methods like setBeanFactory() / setApplicationContext() are called.
+
+5. Pre-Initialization
+   - BeanPostProcessor.postProcessBeforeInitialization()
+   - Runs BEFORE @PostConstruct or afterPropertiesSet()
+
+6. Initialization
+   - Happens in 3 possible ways:
+     a) @PostConstruct  → Recommended
+     b) InitializingBean.afterPropertiesSet()
+     c) init-method in XML or @Bean(initMethod="init")
+
+7. Post-Initialization
+   - BeanPostProcessor.postProcessAfterInitialization()
+
+8. Bean Ready for Use
+
+9. Destruction
+   - Happens in 3 ways:
+     a) @PreDestroy
+     b) DisposableBean.destroy()
+     c) destroy-method in XML or @Bean(destroyMethod="destroy")
+
+
+===========================================
+EXAMPLE: BEAN LIFECYCLE IN SPRING BOOT (JAVA)
+===========================================
+
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.stereotype.Component;
+
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+
+@Component
+public class LifeCycleExample implements InitializingBean, DisposableBean {
+
+    public LifeCycleExample() {
+        System.out.println("1. Constructor: Bean Instantiated");
+    }
+
+    @PostConstruct
+    public void postConstruct() {
+        System.out.println("2. @PostConstruct: Initialization logic");
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        System.out.println("3. afterPropertiesSet(): Initialization from InitializingBean");
+    }
+
+    @PreDestroy
+    public void preDestroy() {
+        System.out.println("4. @PreDestroy: Cleanup logic");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("5. destroy(): Cleanup from DisposableBean");
+    }
+}
+
+
+===========================================
+USING INIT-METHOD & DESTROY-METHOD EXAMPLE
+===========================================
+
+@Configuration
+public class AppConfig {
+
+    @Bean(initMethod = "customInit", destroyMethod = "customDestroy")
+    public DemoBean demoBean() {
+        return new DemoBean();
+    }
+}
+
+public class DemoBean {
+    public void customInit() {
+        System.out.println("Custom init-method: Bean initialized");
+    }
+
+    public void customDestroy() {
+        System.out.println("Custom destroy-method: Bean destroyed");
+    }
+}
