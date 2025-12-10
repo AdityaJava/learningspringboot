@@ -1,0 +1,173 @@
+===========================================
+SPRING BOOT @InitBinder — COMPLETE NOTES
+===========================================
+
+What is @InitBinder?
+--------------------
+- A Spring MVC annotation used inside a Controller.
+- Runs before every request-handling method.
+- Used to customize how Spring binds incoming request data to Java objects.
+
+Why use @InitBinder?
+--------------------
+1. Format dates from request
+2. Bind/convert enums
+3. Add custom validators
+4. Allow only specific fields (whitelist)
+5. Disallow specific fields (security)
+6. Register custom editors for types
+7. Custom conversions for LocalDate, LocalDateTime, etc.
+
+Where does it go?
+-----------------
+Inside a controller:
+
+    @RestController
+    public class UserController {
+        @InitBinder
+        public void initBinder(WebDataBinder binder) {
+            ...
+        }
+    }
+
+
+===========================================
+EXAMPLE 1 — Custom Date Format for LocalDate
+===========================================
+
+@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        binder.registerCustomEditor(LocalDate.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) {
+                setValue(LocalDate.parse(text, formatter));
+            }
+        });
+    }
+
+    @PostMapping("/create")
+    public String createUser(@RequestBody User user) {
+        return "User Created with DOB: " + user.getDob();
+    }
+}
+
+
+User JSON Example:
+------------------
+{
+  "name": "Aditya",
+  "dob": "10-12-2025"
+}
+
+
+===========================================
+EXAMPLE 2 — Disallow Fields (Security)
+===========================================
+
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    binder.setDisallowedFields("role", "isAdmin", "createdBy");
+}
+
+
+===========================================
+EXAMPLE 3 — Allow Only Certain Fields (Whitelist)
+===========================================
+
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    binder.setAllowedFields("name", "email", "dob");
+}
+
+
+===========================================
+EXAMPLE 4 — Add Custom Validator
+===========================================
+
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    binder.addValidators(new UserValidator());
+}
+
+
+===========================================
+EXAMPLE 5 — Convert Enum to Uppercase Automatically
+===========================================
+
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    binder.registerCustomEditor(Status.class, new PropertyEditorSupport() {
+        @Override
+        public void setAsText(String text) {
+            setValue(Status.valueOf(text.toUpperCase()));
+        }
+    });
+}
+
+
+===========================================
+EXAMPLE 6 — Global @InitBinder (Applies to All Controllers)
+===========================================
+
+@ControllerAdvice
+public class GlobalBindingInitializer {
+
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.setAllowedFields("id", "name", "email", "dob");
+    }
+}
+
+
+===========================================
+EXAMPLE 7 — Custom Editor for Trimming Strings
+===========================================
+
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    binder.registerCustomEditor(String.class, new StringTrimmerEditor(true));
+}
+
+
+===========================================
+EXAMPLE 8 — Custom Editor for LocalDateTime
+===========================================
+
+@InitBinder
+public void initBinder(WebDataBinder binder) {
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+
+    binder.registerCustomEditor(LocalDateTime.class, new PropertyEditorSupport() {
+        @Override
+        public void setAsText(String text) {
+            setValue(LocalDateTime.parse(text, formatter));
+        }
+    });
+}
+
+
+===========================================
+IMPORTANT POINTS
+===========================================
+
+1. @InitBinder runs *before* each request handler.
+2. You can have multiple @InitBinder methods.
+3. You can apply @InitBinder globally using @ControllerAdvice.
+4. Use for:
+   - Date conversion
+   - Enum conversion
+   - Disabling fields
+   - String trimming
+   - Adding validators
+5. Only applies to the current controller unless @ControllerAdvice is used.
+
+
+===========================================
+END OF NOTES
+===========================================

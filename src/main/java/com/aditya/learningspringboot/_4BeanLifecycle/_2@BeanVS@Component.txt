@@ -1,0 +1,28 @@
+Use @Component when:
+- The class is part of your project.
+- You want Spring to auto-detect it using component scanning.
+- The object has simple construction logic.
+Example: Services, Repositories, Controllers, Utility classes.
+
+Use @Bean when:
+- The class is from a third-party library and you cannot annotate it.
+- You need custom initialization logic during object creation.
+- You want complete control over the bean creation lifecycle.
+Example: ObjectMapper, RestTemplate, ModelMapper, custom ThreadPoolTaskExecutor.
+
+Short Rule:
+- If you can annotate the class → use @Component.
+- If you must create object manually → use @Bean.
+
+===============================================================================
+
+@Configuration
+public class UtilityConfig {
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.findAndRegisterModules();
+        return mapper;
+    }
+}

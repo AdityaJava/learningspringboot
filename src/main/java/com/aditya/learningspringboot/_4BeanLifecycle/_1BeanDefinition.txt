@@ -1,0 +1,8 @@
+Bean is Java object which is managed by Spring Container
+
+IOC container - > Contains all the beans which get created and also manage them
+
+1. @Component, @Bean Spring boot will internally call new <Constructor>() to create an instance and manage it's lifecycle
+
+2. @Controller, @Service uses @Component annotation internally
+

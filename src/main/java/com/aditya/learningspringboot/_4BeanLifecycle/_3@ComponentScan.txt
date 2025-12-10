@@ -1,0 +1,57 @@
+@ComponentScan — Spring Notes
+
+1. What is @ComponentScan?
+   - @ComponentScan tells Spring where to search for beans/components.
+   - It scans for classes annotated with:
+       @Component, @Service, @Repository, @Controller, @RestController, etc.
+
+2. Why do we need @ComponentScan?
+   - By default, Spring only scans the package of the configuration class.
+   - Use @ComponentScan when:
+       - Your beans are in different packages
+       - You want to include/exclude specific packages
+       - You need fine control over component scanning
+
+3. Basic Example:
+   @Configuration
+   @ComponentScan(basePackages = "com.example.app")
+   public class AppConfig {
+   }
+
+4. Multiple Packages:
+   @ComponentScan(basePackages = {
+       "com.example.controller",
+       "com.example.service",
+       "com.shared.lib"
+   })
+
+5. Using Filters:
+   a) Include only specific types:
+      @ComponentScan(
+          basePackages = "com.example",
+          includeFilters = @ComponentScan.Filter(
+              type = FilterType.ANNOTATION,
+              classes = Service.class
+          )
+      )
+
+   b) Exclude packages/classes:
+      @ComponentScan(
+          basePackages = "com.example",
+          excludeFilters = @ComponentScan.Filter(
+              type = FilterType.REGEX,
+              pattern = "com\\.example\\.legacy\\..*"
+          )
+      )
+
+6. Spring Boot Behavior:
+   - @SpringBootApplication includes @ComponentScan.
+   - Spring Boot scans from the package where the main class is located.
+     Example:
+       com.myapp.Application → scans com.myapp.* automatically.
+
+7. Interview Points:
+   - Controls auto-detection of beans
+   - Default scan path: package of the class where @ComponentScan is used
+   - Filters allow fine-grained component inclusion/exclusion
+   - In Spring Boot, scanning starts from main class package by default
