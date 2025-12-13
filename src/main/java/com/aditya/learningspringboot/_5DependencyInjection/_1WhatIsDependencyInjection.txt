@@ -1,0 +1,167 @@
+========================================================
+DEPENDENCY INJECTION (DI) & D IN SOLID – SPRING BOOT NOTES
+========================================================
+
+--------------------------------
+1. DEFINITION OF DEPENDENCY INJECTION
+--------------------------------
+Dependency Injection (DI) is a design pattern where an object does NOT create
+its own dependencies. Instead, the dependencies are provided (injected) from
+outside, typically by a framework like Spring.
+
+In Spring Boot:
+- Spring creates objects (beans)
+- Spring manages their lifecycle
+- Spring injects required dependencies at runtime
+
+--------------------------------
+2. D IN SOLID PRINCIPLE
+--------------------------------
+D = Dependency Inversion Principle (DIP)
+
+Definition:
+High-level modules should not depend on low-level modules.
+Both should depend on abstractions.
+
+Abstractions should not depend on details.
+Details should depend on abstractions.
+
+--------------------------------
+3. PROBLEM WITHOUT DI (DIP VIOLATION)
+--------------------------------
+High-level class depends directly on low-level class.
+
+Example (BAD DESIGN):
+
+public class OrderService {
+
+    private MySqlOrderRepository repository = new MySqlOrderRepository();
+
+    public void placeOrder() {
+        repository.save();
+    }
+}
+
+Problems:
+- Tight coupling
+- Hard to change database
+- Hard to test
+- Violates Dependency Inversion Principle
+
+--------------------------------
+4. APPLYING DIP USING SPRING DI
+--------------------------------
+
+STEP 1: CREATE AN ABSTRACTION
+
+public interface OrderRepository {
+    void save();
+}
+
+--------------------------------
+STEP 2: LOW-LEVEL MODULE IMPLEMENTS ABSTRACTION
+
+@Repository
+public class MySqlOrderRepository implements OrderRepository {
+
+    @Override
+    public void save() {
+        // MySQL specific logic
+    }
+}
+
+@Repository
+public class MongoOrderRepository implements OrderRepository {
+
+    @Override
+    public void save() {
+        // MongoDB specific logic
+    }
+}
+
+--------------------------------
+STEP 3: HIGH-LEVEL MODULE DEPENDS ON ABSTRACTION
+
+@Service
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+
+    // Constructor Injection (BEST PRACTICE)
+    public OrderService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    public void placeOrder() {
+        orderRepository.save();
+    }
+}
+
+--------------------------------
+5. HOW SPRING BOOT DI HELPS D IN SOLID
+--------------------------------
+- OrderService depends on OrderRepository (interface)
+- Implementations depend on the same abstraction
+- Spring injects the concrete implementation at runtime
+
+Flow:
+OrderService
+    ↓
+OrderRepository (interface)
+    ↓
+MySqlOrderRepository / MongoOrderRepository
+
+--------------------------------
+6. SWITCH IMPLEMENTATION WITHOUT CHANGING CODE
+--------------------------------
+
+Using @Primary:
+
+@Primary
+@Repository
+public class MongoOrderRepository implements OrderRepository {
+}
+
+OR using @Qualifier:
+
+public OrderService(
+    @Qualifier("mySqlOrderRepository") OrderRepository orderRepository
+) {
+    this.orderRepository = orderRepository;
+}
+
+--------------------------------
+7. BENEFITS ACHIEVED (DIP SATISFIED)
+--------------------------------
+✔ Loose coupling
+✔ Easy maintenance
+✔ Easy database switch
+✔ High testability
+✔ Clean architecture
+✔ Follows SOLID principles
+
+--------------------------------
+8. UNIT TESTING BECOMES EASY
+--------------------------------
+
+@Mock
+private OrderRepository orderRepository;
+
+@InjectMocks
+private OrderService orderService;
+
+No database required.
+Only business logic is tested.
+
+--------------------------------
+9. ONE-LINE INTERVIEW ANSWER
+--------------------------------
+Spring Boot Dependency Injection enforces the Dependency Inversion Principle
+by ensuring high-level components depend on abstractions rather than concrete
+implementations, while Spring injects the actual implementations at runtime.
+
+--------------------------------
+10. KEY TAKEAWAY
+--------------------------------
+Dependency Injection is the PRACTICAL IMPLEMENTATION of the
+"D" (Dependency Inversion) in SOLID principles.

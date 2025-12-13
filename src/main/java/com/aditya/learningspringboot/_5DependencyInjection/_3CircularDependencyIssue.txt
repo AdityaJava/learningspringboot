@@ -1,0 +1,238 @@
+========================================================
+CIRCULAR DEPENDENCY IN SPRING – NOTES
+========================================================
+
+--------------------------------
+1. DEFINITION: CIRCULAR DEPENDENCY
+--------------------------------
+A circular dependency occurs when two or more Spring beans depend on each other
+directly or indirectly, forming a cycle that Spring cannot resolve during
+bean creation.
+
+Example:
+Bean A → depends on Bean B
+Bean B → depends on Bean A
+
+This creates a cycle:
+A → B → A
+
+Spring fails to create beans because each one waits for the other to be
+fully initialized.
+
+--------------------------------
+2. SIMPLE CIRCULAR DEPENDENCY EXAMPLE
+--------------------------------
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+@Service
+public class PaymentService {
+
+    private final OrderService orderService;
+
+    public PaymentService(OrderService orderService) {
+        this.orderService = orderService;
+    }
+}
+
+Result:
+❌ Circular dependency detected
+❌ Application startup fails
+
+--------------------------------
+3. WHY CIRCULAR DEPENDENCY IS A PROBLEM
+--------------------------------
+- Breaks clean architecture
+- Indicates poor separation of responsibilities
+- Makes code hard to understand and maintain
+- Constructor injection cannot resolve cycles
+
+--------------------------------
+4. WAYS TO RESOLVE CIRCULAR DEPENDENCY
+--------------------------------
+
+------------------------------------------------
+WAY 1: MOVE COMMON LOGIC TO A SEPARATE CLASS
+------------------------------------------------
+
+YES — This IS a valid and RECOMMENDED design fix.
+
+WHEN TO USE:
+- When both classes share common logic
+- When responsibilities are mixed
+
+EXAMPLE:
+
+@Service
+public class OrderPaymentHelper {
+
+    public void validateOrderAndPayment() {
+        // common logic here
+    }
+}
+
+@Service
+public class OrderService {
+
+    private final OrderPaymentHelper helper;
+
+    public OrderService(OrderPaymentHelper helper) {
+        this.helper = helper;
+    }
+}
+
+@Service
+public class PaymentService {
+
+    private final OrderPaymentHelper helper;
+
+    public PaymentService(OrderPaymentHelper helper) {
+        this.helper = helper;
+    }
+}
+
+ADVANTAGES:
+✔ Removes circular dependency cleanly
+✔ Improves separation of concerns
+✔ Best architectural solution
+
+DISADVANTAGES:
+❌ Requires refactoring
+❌ May introduce extra class
+
+------------------------------------------------
+WAY 2: USING @Lazy
+------------------------------------------------
+
+@Lazy delays bean initialization until it is actually needed.
+
+OPTION A: @Lazy ON CONSTRUCTOR PARAMETER (BEST)
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(@Lazy PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+@Service
+public class PaymentService {
+
+    private final OrderService orderService;
+
+    public PaymentService(OrderService orderService) {
+        this.orderService = orderService;
+    }
+}
+
+OPTION B: @Lazy ON FIELD (LESS RECOMMENDED)
+
+@Service
+public class OrderService {
+
+    @Lazy
+    @Autowired
+    private PaymentService paymentService;
+}
+
+WHAT HAPPENS:
+- Spring creates one bean first
+- Injects a proxy instead of real object
+- Real object is created only when accessed
+
+ADVANTAGES:
+✔ Quick fix
+✔ No major refactoring
+
+DISADVANTAGES:
+❌ Hides design issues
+❌ Runtime surprises possible
+❌ Proxy overhead
+
+------------------------------------------------
+WAY 3: USING @PostConstruct
+------------------------------------------------
+
+@PostConstruct runs after bean creation and dependency injection.
+
+EXAMPLE:
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+@Service
+public class PaymentService {
+
+    private OrderService orderService;
+
+    private final ApplicationContext applicationContext;
+
+    public PaymentService(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
+
+    @PostConstruct
+    public void init() {
+        this.orderService = applicationContext.getBean(OrderService.class);
+    }
+}
+
+HOW IT WORKS:
+- Spring creates beans without full wiring
+- After creation, dependency is manually fetched
+
+ADVANTAGES:
+✔ Breaks circular dependency
+✔ Works in legacy systems
+
+DISADVANTAGES:
+❌ Not clean design
+❌ Tight coupling to Spring context
+❌ Harder to test
+❌ Should be last resort
+
+--------------------------------
+5. WHICH APPROACH SHOULD YOU CHOOSE?
+--------------------------------
+
+BEST:
+✔ Refactor and extract common logic (Way 1)
+
+ACCEPTABLE (TEMP FIX):
+⚠ @Lazy (Way 2)
+
+LAST RESORT:
+❌ @PostConstruct (Way 3)
+
+--------------------------------
+6. INTERVIEW-READY SUMMARY
+--------------------------------
+A circular dependency occurs when two Spring beans depend on each other,
+preventing Spring from completing bean creation. The best solution is to
+refactor the design and move shared logic into a separate class. If refactoring
+is not possible, @Lazy can be used as a temporary workaround, while @PostConstruct
+should be used only as a last resort.
+
+--------------------------------
+7. FINAL TAKEAWAY
+--------------------------------
+Circular dependency is not a Spring problem — it is a DESIGN problem.
+Fix the design first, not the framework.

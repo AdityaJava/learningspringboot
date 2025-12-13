@@ -1,0 +1,174 @@
+========================================================
+SPRING DEPENDENCY INJECTION TYPES – COMPLETE NOTES
+(Field, Setter & Constructor Injection)
+========================================================
+
+--------------------------------
+1. FIELD INJECTION
+--------------------------------
+
+DEFINITION:
+Dependency is injected directly into the field using @Autowired.
+
+EXAMPLE:
+
+@Service
+public class OrderService {
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    public void placeOrder() {
+        orderRepository.save();
+    }
+}
+
+ADVANTAGES:
+✔ Less boilerplate code
+✔ Easy and quick to write
+✔ Looks clean for small demos
+
+DISADVANTAGES:
+❌ Hidden dependencies (not visible in constructor)
+❌ Difficult to unit test (needs reflection or Spring context)
+❌ Cannot make field final
+❌ Violates good OOP design principles
+
+WHEN TO USE:
+- Prototypes
+- Learning / demos
+- NOT recommended for production code
+
+--------------------------------
+2. SETTER INJECTION
+--------------------------------
+
+DEFINITION:
+Dependency is injected through a setter method.
+
+EXAMPLE:
+
+@Service
+public class OrderService {
+
+    private OrderRepository orderRepository;
+
+    @Autowired
+    public void setOrderRepository(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    public void placeOrder() {
+        orderRepository.save();
+    }
+}
+
+ADVANTAGES:
+✔ Dependency is optional
+✔ Allows changing dependency after object creation
+✔ Useful for optional or configurable dependencies
+
+DISADVANTAGES:
+❌ Object can be created in an incomplete state
+❌ Dependency may be null if setter not called
+❌ Not ideal for mandatory dependencies
+
+WHEN TO USE:
+- Optional dependencies
+- Configuration-based injection
+
+--------------------------------
+3. CONSTRUCTOR INJECTION (RECOMMENDED)
+--------------------------------
+
+DEFINITION:
+Dependency is injected through the constructor.
+(Spring automatically injects if there is only one constructor.)
+
+EXAMPLE (BEST PRACTICE):
+
+@Service
+public class OrderService {
+
+    private final OrderRepository orderRepository;
+
+    public OrderService(OrderRepository orderRepository) {
+        this.orderRepository = orderRepository;
+    }
+
+    public void placeOrder() {
+        orderRepository.save();
+    }
+}
+
+(No @Autowired required for single constructor)
+
+--------------------------------
+4. WHY CONSTRUCTOR INJECTION IS RECOMMENDED
+--------------------------------
+
+✔ Makes dependencies explicit
+✔ Ensures object is always in a valid state
+✔ Allows use of final fields (immutability)
+✔ Easy to unit test without Spring
+✔ Follows SOLID (especially DIP)
+✔ Encouraged by Spring & industry standards
+
+--------------------------------
+5. UNIT TESTING COMPARISON
+--------------------------------
+
+FIELD INJECTION (HARD):
+
+OrderService service = new OrderService();
+// orderRepository is null
+
+CONSTRUCTOR INJECTION (EASY):
+
+OrderRepository repo = mock(OrderRepository.class);
+OrderService service = new OrderService(repo);
+
+--------------------------------
+6. QUICK COMPARISON TABLE
+--------------------------------
+
+FIELD INJECTION:
+- Visibility of dependency: Hidden
+- Immutability: No
+- Testability: Poor
+- Recommendation: ❌ Avoid
+
+SETTER INJECTION:
+- Visibility of dependency: Partial
+- Immutability: No
+- Testability: Medium
+- Recommendation: ⚠ Optional use
+
+CONSTRUCTOR INJECTION:
+- Visibility of dependency: Explicit
+- Immutability: Yes (final)
+- Testability: Excellent
+- Recommendation: ✅ Best Practice
+
+--------------------------------
+7. ONE-LINE INTERVIEW ANSWERS
+--------------------------------
+
+FIELD INJECTION:
+"Field injection is discouraged because it hides dependencies and makes
+testing difficult."
+
+SETTER INJECTION:
+"Setter injection is useful for optional dependencies but can leave objects
+in an inconsistent state."
+
+CONSTRUCTOR INJECTION:
+"Constructor injection is recommended because it enforces immutability,
+ensures required dependencies, and improves testability."
+
+--------------------------------
+8. FINAL TAKEAWAY
+--------------------------------
+Use CONSTRUCTOR INJECTION by default.
+Use SETTER INJECTION only for optional dependencies.
+Avoid FIELD INJECTION in production code.
