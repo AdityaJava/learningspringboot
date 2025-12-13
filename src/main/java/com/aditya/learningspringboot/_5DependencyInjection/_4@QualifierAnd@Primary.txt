@@ -1,0 +1,250 @@
+========================================================
+MULTIPLE IMPLEMENTATIONS OF INTERFACE IN SPRING
+(@Primary vs @Qualifier)
+========================================================
+
+--------------------------------
+1. PROBLEM STATEMENT
+--------------------------------
+When an interface has more than one implementation, Spring does not know
+which bean to inject and throws an error.
+
+Example Error:
+NoUniqueBeanDefinitionException:
+expected single matching bean but found 2
+
+--------------------------------
+2. INTERFACE WITH MULTIPLE IMPLEMENTATIONS
+--------------------------------
+
+public interface PaymentService {
+    void pay();
+}
+
+--------------------------------
+IMPLEMENTATION 1
+--------------------------------
+
+@Service
+public class CardPaymentService implements PaymentService {
+
+    @Override
+    public void pay() {
+        // Card payment logic
+    }
+}
+
+--------------------------------
+IMPLEMENTATION 2
+--------------------------------
+
+@Service
+public class UpiPaymentService implements PaymentService {
+
+    @Override
+    public void pay() {
+        // UPI payment logic
+    }
+}
+
+--------------------------------
+INJECTION WITHOUT RESOLUTION (FAILS)
+--------------------------------
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+Result:
+❌ Spring does not know which implementation to inject
+
+--------------------------------
+3. SOLUTION 1: USING @Primary
+--------------------------------
+
+DEFINITION:
+@Primary tells Spring which bean should be chosen by default when multiple
+beans of the same type exist.
+
+--------------------------------
+EXAMPLE
+--------------------------------
+
+@Primary
+@Service
+public class UpiPaymentService implements PaymentService {
+
+    @Override
+    public void pay() {
+        // Default payment logic
+    }
+}
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+}
+
+WHAT HAPPENS:
+✔ Spring injects UpiPaymentService automatically
+
+--------------------------------
+WHEN TO USE @Primary
+--------------------------------
+✔ One implementation is default in most cases
+✔ Application-wide preference
+✔ Avoids repeated qualifiers
+
+--------------------------------
+ADVANTAGES
+--------------------------------
+✔ Clean code
+✔ No change at injection points
+✔ Centralized decision
+
+--------------------------------
+DISADVANTAGES
+--------------------------------
+❌ Only one bean can be primary
+❌ Not explicit at injection point
+❌ Can cause confusion in large teams
+
+--------------------------------
+4. SOLUTION 2: USING @Qualifier
+--------------------------------
+
+DEFINITION:
+@Qualifier explicitly tells Spring which bean to inject by name.
+
+--------------------------------
+EXAMPLE
+--------------------------------
+
+@Service("cardPaymentService")
+public class CardPaymentService implements PaymentService {
+
+    @Override
+    public void pay() {
+        // Card payment logic
+    }
+}
+
+@Service("upiPaymentService")
+public class UpiPaymentService implements PaymentService {
+
+    @Override
+    public void pay() {
+        // UPI payment logic
+    }
+}
+
+--------------------------------
+INJECTION USING @Qualifier
+--------------------------------
+
+@Service
+public class OrderService {
+
+    private final PaymentService paymentService;
+
+    public OrderService(
+        @Qualifier("cardPaymentService") PaymentService paymentService
+    ) {
+        this.paymentService = paymentService;
+    }
+}
+
+WHAT HAPPENS:
+✔ Spring injects CardPaymentService
+
+--------------------------------
+WHEN TO USE @Qualifier
+--------------------------------
+✔ Different implementations needed in different places
+✔ Clear and explicit dependency
+✔ Fine-grained control
+
+--------------------------------
+ADVANTAGES
+--------------------------------
+✔ Very explicit
+✔ No ambiguity
+✔ Easy to understand at injection point
+
+--------------------------------
+DISADVANTAGES
+--------------------------------
+❌ More boilerplate
+❌ Bean name dependency
+❌ Refactoring bean names needs care
+
+--------------------------------
+5. @Primary VS @Qualifier – QUICK COMPARISON
+--------------------------------
+
+@Primary:
+- Selection type: Default
+- Scope: Application-wide
+- Explicitness: Low
+- Use case: One common implementation
+
+@Qualifier:
+- Selection type: Explicit
+- Scope: Injection point
+- Explicitness: High
+- Use case: Multiple implementations used differently
+
+--------------------------------
+6. USING BOTH TOGETHER
+--------------------------------
+
+Rule:
+@Qualifier ALWAYS overrides @Primary
+
+Example:
+
+@Primary
+@Service("upiPaymentService")
+public class UpiPaymentService implements PaymentService {
+}
+
+@Service("cardPaymentService")
+public class CardPaymentService implements PaymentService {
+}
+
+@Service
+public class OrderService {
+
+    public OrderService(
+        @Qualifier("cardPaymentService") PaymentService paymentService
+    ) {
+    }
+}
+
+Result:
+✔ CardPaymentService is injected
+
+--------------------------------
+7. INTERVIEW-READY ANSWER
+--------------------------------
+When multiple implementations of an interface exist, Spring cannot decide
+which bean to inject. @Primary is used to define a default implementation,
+while @Qualifier is used to explicitly specify which implementation should
+be injected. If both are present, @Qualifier takes precedence.
+
+--------------------------------
+8. FINAL TAKEAWAY
+--------------------------------
+Use @Primary when one implementation is the default.
+Use @Qualifier when multiple implementations are required explicitly.
