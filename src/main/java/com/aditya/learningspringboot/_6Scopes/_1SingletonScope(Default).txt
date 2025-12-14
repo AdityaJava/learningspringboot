@@ -1,0 +1,54 @@
+/*
+================================================================================
+SINGLETON SCOPE
+================================================================================
+
+1. Definition
+--------------
+- Only ONE instance of the bean is created per Spring IoC container.
+- The same instance is shared across the entire application.
+- This is the DEFAULT scope in Spring.
+- If no @Scope is mentioned, Spring assumes singleton.
+
+2. Lifecycle
+-------------
+- Bean is created at application startup (EAGER by default).
+- Destroyed when application context shuts down.
+
+3. Thread Safety
+----------------
+- Singleton does NOT mean thread-safe.
+- Thread safety depends on how the class is written.
+- Stateless singletons are safe; stateful singletons are risky.
+
+*/
+
+@Service
+@Scope("singleton") // optional, default behavior
+public class UserService {
+
+    public void processUser(Long userId) {
+        System.out.println("Processing user with id: " + userId);
+    }
+}
+
+/*
+4. When to Use
+---------------
+- Stateless services
+- Business logic
+- Repositories and DAOs
+- Utility classes
+
+5. Real-life Use
+-----------------
+- UserService
+- OrderService
+- PaymentService
+- NotificationService
+
+6. Interview Tip
+----------------
+- 90–95% of Spring beans are Singleton
+- Prefer Singleton unless you have a strong reason not to
+*/

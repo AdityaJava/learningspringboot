@@ -1,5 +1,8 @@
-package com.aditya.learningspringboot._5TransactionManagement._2Programmatic;
+package com.aditya.learningspringboot._8TransactionManagement._2Programmatic;
 
+import org.springframework.context.annotation.Scope;
+
+@Scope(scopeName = PROTOT)
 public class Programattic2MoreConcise {
 }
 

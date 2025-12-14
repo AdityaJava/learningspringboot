@@ -1,0 +1,80 @@
+/*
+================================================================================
+SESSION SCOPE
+================================================================================
+
+1. Definition
+--------------
+- One bean instance per HTTP session.
+- Bean lives until session expires or is invalidated.
+
+2. Lifecycle
+-------------
+- Created when session starts (on first access).
+- Destroyed when session ends.
+
+*/
+
+@Component
+@SessionScope
+public class UserSession {
+
+    private String username;
+    private int loginAttempts;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public int getLoginAttempts() {
+        return loginAttempts;
+    }
+}
+
+/*
+================================================================================
+PROXY IN SESSION SCOPE
+================================================================================
+
+- Same issue as Request scope when injected into Singleton.
+- Needs proxy to delay real bean resolution until session exists.
+*/
+
+@Component
+@Scope(
+    value = WebApplicationContext.SCOPE_SESSION,
+    proxyMode = ScopedProxyMode.TARGET_CLASS
+)
+public class UserSessionWithProxy {
+}
+
+/*
+================================================================================
+LAZY vs EAGER
+================================================================================
+- Session scope is LAZY by default.
+- Bean created only when session is accessed.
+
+================================================================================
+WHEN TO USE
+================================================================================
+- User-specific data
+- Login state
+- Multi-step workflows
+
+================================================================================
+REAL-LIFE USE
+================================================================================
+- Shopping cart
+- Logged-in user profile
+- OTP verification flows
+
+================================================================================
+INTERVIEW TIP
+================================================================================
+- Avoid storing heavy objects in session (memory leak risk)
+*/

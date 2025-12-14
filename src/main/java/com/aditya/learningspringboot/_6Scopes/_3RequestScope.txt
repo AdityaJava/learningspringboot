@@ -1,0 +1,85 @@
+/*
+================================================================================
+REQUEST SCOPE
+================================================================================
+
+1. Definition
+--------------
+- One bean instance is created per HTTP request.
+- Bean exists only for the duration of the request.
+- Available ONLY in web applications.
+
+2. Lifecycle
+-------------
+- Created when request starts (on first access).
+- Destroyed automatically when request completes.
+
+*/
+
+@Component
+@RequestScope
+public class RequestContext {
+
+    private final String requestId = UUID.randomUUID().toString();
+
+    public String getRequestId() {
+        return requestId;
+    }
+}
+
+/*
+================================================================================
+PROXY IN REQUEST SCOPE (VERY IMPORTANT)
+================================================================================
+
+Problem:
+---------
+- Request-scoped bean cannot be directly injected into a Singleton bean.
+- Reason:
+  - Singleton is created at application startup.
+  - Request scope exists only during an HTTP request.
+
+Solution: Scoped Proxy
+----------------------
+- Spring injects a PROXY instead of the real bean.
+- Proxy acts as a placeholder.
+- Actual bean is resolved at runtime, per request.
+
+*/
+
+@Component
+@Scope(
+    value = WebApplicationContext.SCOPE_REQUEST,
+    proxyMode = ScopedProxyMode.TARGET_CLASS
+)
+public class RequestContextWithProxy {
+}
+
+/*
+================================================================================
+LAZY vs EAGER
+================================================================================
+- Request scope is LAZY by default.
+- Bean is NOT created at application startup.
+- Created only when accessed during a request.
+
+================================================================================
+WHEN TO USE
+================================================================================
+- Request metadata
+- Correlation IDs
+- Request-level caching
+- Validation errors
+
+================================================================================
+REAL-LIFE USE
+================================================================================
+- Distributed tracing (requestId)
+- API logging
+- Audit data per request
+
+================================================================================
+INTERVIEW TIP
+================================================================================
+- "Scope 'request' is not active for the current thread" → missing proxy
+*/

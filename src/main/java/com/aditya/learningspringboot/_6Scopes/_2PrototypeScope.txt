@@ -1,0 +1,53 @@
+/*
+================================================================================
+PROTOTYPE SCOPE
+================================================================================
+
+1. Definition
+--------------
+- A NEW instance of the bean is created every time it is requested.
+- Spring manages ONLY the creation, not the destruction.
+- Developer is responsible for cleanup if needed.
+
+2. Lifecycle
+-------------
+- Bean is created ONLY when requested (LAZY by nature).
+- No destroy callback is called automatically.
+
+*/
+
+@Component
+@Scope("prototype")
+public class ReportGenerator {
+
+    private final String reportId = UUID.randomUUID().toString();
+
+    public String getReportId() {
+        return reportId;
+    }
+}
+
+/*
+3. Important Behavior
+---------------------
+- Injecting prototype into singleton DOES NOT create new instance each time.
+- Singleton gets only ONE prototype instance at injection time.
+- To truly get new instances, use ObjectProvider or ApplicationContext.
+
+4. When to Use
+---------------
+- Stateful beans
+- Per-operation objects
+- Objects holding temporary data
+
+5. Real-life Use
+-----------------
+- PDF / Excel generation
+- File processing
+- Data transformation jobs
+
+6. Interview Tip
+----------------
+- Prototype ≠ automatically thread-safe
+- Spring does not manage full lifecycle
+*/

@@ -1,0 +1,59 @@
+/*
+================================================================================
+APPLICATION SCOPE
+================================================================================
+
+1. Definition
+--------------
+- One bean instance per ServletContext.
+- Shared across entire web application.
+- Similar to Singleton but web-context aware.
+
+2. Lifecycle
+-------------
+- Created at application startup.
+- Destroyed when application shuts down.
+
+*/
+
+@Component
+@ApplicationScope
+public class ApplicationCache {
+
+    private final Map<String, String> cache = new ConcurrentHashMap<>();
+
+    public void put(String key, String value) {
+        cache.put(key, value);
+    }
+
+    public String get(String key) {
+        return cache.get(key);
+    }
+}
+
+/*
+================================================================================
+LAZY vs EAGER
+================================================================================
+- Application scope is EAGER by default (like Singleton).
+
+================================================================================
+WHEN TO USE
+================================================================================
+- Shared data across application
+- Static lookup data
+- Configuration caches
+
+================================================================================
+REAL-LIFE USE
+================================================================================
+- Country / state master data
+- Feature flags
+- Static dropdown values
+
+================================================================================
+INTERVIEW TIP
+================================================================================
+- Application scope ≠ Cluster-wide
+- Each app instance has its own Application scope
+*/

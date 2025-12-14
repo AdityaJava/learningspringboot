@@ -1,4 +1,4 @@
-package com.aditya.learningspringboot._5TransactionManagement._1Declarative;
+package com.aditya.learningspringboot._8TransactionManagement._1Declarative;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
