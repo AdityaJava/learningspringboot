@@ -1,0 +1,318 @@
+/**********************************************************************************************
+ *                 CONDITIONAL BEAN LOADING IN SPRING / SPRING BOOT
+ *                 (IN-DEPTH NOTES – SINGLE CONSOLIDATED VIEW)
+ *
+ *  PURPOSE:
+ *  --------
+ *  Conditional Bean Loading allows Spring to decide WHETHER a bean should be created
+ *  based on environment, configuration, classpath, profiles, or custom logic.
+ *
+ *  This mechanism is evaluated:
+ *  👉 BEFORE bean instantiation
+ *  👉 DURING configuration parsing
+ *
+ *  If condition = false → Bean DOES NOT EXIST in ApplicationContext
+ **********************************************************************************************/
+
+/*==============================================================================================
+  1. CORE MECHANISM – @Conditional
+==============================================================================================*/
+
+/*
+ * @Conditional is the foundation of all conditional annotations.
+ * Spring internally uses it for:
+ *  - @ConditionalOnProperty
+ *  - @ConditionalOnClass
+ *  - @ConditionalOnBean
+ *
+ * You implement org.springframework.context.annotation.Condition
+ */
+
+public class ProdOnlyCondition implements Condition {
+
+    @Override
+    public boolean matches(ConditionContext context,
+                           AnnotatedTypeMetadata metadata) {
+
+        /*
+         * ConditionContext gives access to:
+         * - Environment (properties, profiles)
+         * - BeanFactory
+         * - ClassLoader
+         * - ResourceLoader
+         */
+
+        String appMode = context.getEnvironment().getProperty("app.mode");
+
+        /*
+         * Return true  -> Bean will be registered
+         * Return false -> Bean will be ignored completely
+         */
+        return "prod".equalsIgnoreCase(appMode);
+    }
+}
+
+@Configuration
+class CoreConfig {
+
+    @Bean
+    @Conditional(ProdOnlyCondition.class)
+    public PaymentService paymentService() {
+        return new PaymentService();
+    }
+}
+
+/*
+ * KEY POINTS:
+ * ----------
+ * ✔ Condition is checked BEFORE bean creation
+ * ✔ If false → bean is NOT in context
+ * ✔ @Autowired of this bean will FAIL if condition is false
+ *
+ * REAL USE:
+ * ---------
+ * - Environment-specific beans
+ * - Complex enable/disable rules
+ * - Framework / library development
+ */
+
+
+/*==============================================================================================
+  2. @ConditionalOnProperty (MOST COMMON IN REAL PROJECTS)
+==============================================================================================*/
+
+/*
+ * Loads bean based on property value.
+ * Used heavily for feature toggles.
+ */
+
+@Bean
+@ConditionalOnProperty(
+        name = "feature.email.enabled",
+        havingValue = "true",
+        matchIfMissing = false
+)
+public EmailService emailService() {
+    return new EmailService();
+}
+
+/*
+ * application.properties
+ * ----------------------
+ * feature.email.enabled=true
+ */
+
+/*
+ * DEEP UNDERSTANDING:
+ * ------------------
+ * havingValue     -> expected value
+ * matchIfMissing  -> if property NOT present
+ *
+ * matchIfMissing = false
+ *   - property missing → bean NOT loaded
+ *
+ * matchIfMissing = true
+ *   - property missing → bean LOADED
+ *
+ * REAL-LIFE USAGE:
+ * ----------------
+ * - Enable / disable features
+ * - Blue-green deployments
+ * - Kill switches for production bugs
+ */
+
+
+/*==============================================================================================
+  3. @ConditionalOnClass (CLASSPATH-BASED LOADING)
+==============================================================================================*/
+
+/*
+ * Bean loads ONLY if given class exists in classpath.
+ * Spring Boot auto-configuration heavily depends on this.
+ */
+
+@Bean
+@ConditionalOnClass(name = "org.hibernate.Session")
+public HibernateAuditService auditService() {
+    return new HibernateAuditService();
+}
+
+/*
+ * DEEP INSIGHT:
+ * -------------
+ * - No ClassNotFoundException
+ * - Bean simply does not load if dependency is absent
+ *
+ * REAL-LIFE EXAMPLES:
+ * -------------------
+ * - JPA beans load only if Hibernate exists
+ * - Kafka beans load only if Kafka dependency exists
+ */
+
+
+/*==============================================================================================
+  4. @ConditionalOnMissingBean (DEFAULT / FALLBACK BEANS)
+==============================================================================================*/
+
+/*
+ * Creates bean ONLY if no other bean of same type is already present.
+ */
+
+@Bean
+@ConditionalOnMissingBean(PasswordEncoder.class)
+public PasswordEncoder defaultPasswordEncoder() {
+    return new BCryptPasswordEncoder();
+}
+
+/*
+ * DEEP INSIGHT:
+ * -------------
+ * - Enables customization
+ * - User-defined bean overrides default
+ *
+ * REAL-LIFE USAGE:
+ * ----------------
+ * - Spring Security defaults
+ * - Library auto-configs
+ */
+
+
+/*==============================================================================================
+  5. @ConditionalOnBean (DEPENDENT BEAN CREATION)
+==============================================================================================*/
+
+/*
+ * Bean loads only if another bean already exists.
+ */
+
+@Bean
+@ConditionalOnBean(DataSource.class)
+public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+    return new JdbcTemplate(dataSource);
+}
+
+/*
+ * WHY THIS EXISTS:
+ * ----------------
+ * Prevents Partial Configuration
+ *
+ * REAL-LIFE USAGE:
+ * ----------------
+ * - DAO loads only if DB configured
+ * - Cache layer loads only if CacheManager exists
+ */
+
+
+/*==============================================================================================
+  6. @Profile (PROFILE-BASED CONDITIONAL LOADING)
+==============================================================================================*/
+
+/*
+ * Simplest form of conditional loading.
+ */
+
+@Bean
+@Profile("dev")
+public DataSource devDataSource() {
+    return new EmbeddedDatabaseBuilder()
+            .setType(EmbeddedDatabaseType.H2)
+            .build();
+}
+
+@Bean
+@Profile("prod")
+public DataSource prodDataSource() {
+    return new HikariDataSource();
+}
+
+/*
+ * application.properties
+ * ----------------------
+ * spring.profiles.active=dev
+ *
+ * DEEP INSIGHT:
+ * -------------
+ * - Profiles are resolved very early
+ * - Beans outside active profile do NOT exist
+ */
+
+
+/*==============================================================================================
+  7. @ConditionalOnExpression (SpEL-BASED)
+==============================================================================================*/
+
+/*
+ * Uses Spring Expression Language (SpEL).
+ */
+
+@Bean
+@ConditionalOnExpression("'${app.region}' == 'IN'")
+public GstService gstService() {
+    return new GstService();
+}
+
+/*
+ * DEEP INSIGHT:
+ * -------------
+ * - Evaluated at startup
+ * - Use cautiously (harder to debug)
+ */
+
+
+/*==============================================================================================
+  8. INTERNAL EXECUTION FLOW (VERY IMPORTANT)
+==============================================================================================*/
+
+/*
+ * 1. Spring scans configuration classes
+ * 2. Encounters @Bean / @Component
+ * 3. Evaluates ALL @Conditional annotations
+ * 4. Registers bean definitions ONLY if condition = true
+ * 5. Bean instantiation happens later
+ *
+ * IMPORTANT:
+ * ----------
+ * ❌ Conditional beans are NOT lazily skipped
+ * ✔ They NEVER EXIST if condition fails
+ */
+
+
+/*==============================================================================================
+  9. COMMON PITFALLS (INTERVIEW FAVORITES)
+==============================================================================================*/
+
+/*
+ * ❌ Expecting @Autowired bean when condition is false
+ * ❌ Using @Value inside Condition class
+ * ❌ Forgetting matchIfMissing behavior
+ * ❌ Confusing @Profile with @ConditionalOnProperty
+ */
+
+
+/*==============================================================================================
+  10. INTERVIEW ONE-LINERS
+==============================================================================================*/
+
+/*
+ * @Conditional               -> Custom logic
+ * @ConditionalOnProperty     -> Config-driven
+ * @ConditionalOnClass        -> Dependency-based
+ * @ConditionalOnMissingBean  -> Default bean
+ * @ConditionalOnBean         -> Dependent feature
+ * @Profile                   -> Environment-based
+ */
+
+
+/*==============================================================================================
+  FINAL REAL-WORLD TAKEAWAY
+==============================================================================================*/
+
+/*
+ * Conditional Bean Loading is the backbone of:
+ * ✔ Spring Boot auto-configuration
+ * ✔ Modular microservices
+ * ✔ Feature toggles
+ * ✔ Environment-specific behavior
+ *
+ * Mastering this = Understanding how Spring REALLY boots your application
+ */
