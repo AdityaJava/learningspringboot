@@ -1,4 +1,4 @@
-package com.aditya.learningspringboot._8TransactionManagement._4IsolationLevels;
+package com.aditya.learningspringboot._10TransactionManagement._4IsolationLevels;
 
 import org.springframework.transaction.annotation.Transactional;
 

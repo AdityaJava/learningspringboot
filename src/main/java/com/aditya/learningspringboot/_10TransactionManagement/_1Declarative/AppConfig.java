@@ -1,4 +1,4 @@
-package com.aditya.learningspringboot._8TransactionManagement._1Declarative;
+package com.aditya.learningspringboot._10TransactionManagement._1Declarative;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,4 +1,4 @@
-package com.aditya.learningspringboot._8TransactionManagement._2Programmatic;
+package com.aditya.learningspringboot._10TransactionManagement._2Programmatic;
 
 import org.springframework.context.annotation.Scope;
 
