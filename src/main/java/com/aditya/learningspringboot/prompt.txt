@@ -1,0 +1,6 @@
+Give notes about spring AOP. give in one code window and well indentation and well exampled and
+Take one example and give
+1. What is PointCut?
+2. execution( public String com.fullpath.Employee.fetchEmployee( )) where public is not mandatory but other things are mandat and we can use * wildcard for single arg and (..) for zero or multiple args/param confirm
+3. How to match any method in that package which has single String type arg
+4. Match fetchEmployee method that take any single param.
