@@ -1,0 +1,226 @@
+/*****************************************************************************************
+ * REQUESTCONTEXTHOLDER — END TO END (WHO FILLS IT, FROM WHERE, HOW IT WORKS)
+ *
+ * KEY TRUTH:
+ * - RequestContextHolder is CORE SPRING WEB
+ * - It uses ThreadLocal (CORE JAVA)
+ * - It is populated from HttpServletRequest
+ *****************************************************************************************/
+
+/*
+==========================================================================================
+1. WHAT IS RequestContextHolder?
+==========================================================================================
+
+- Static holder
+- Uses ThreadLocal
+- Stores request-scoped data for the CURRENT THREAD
+*/
+
+public abstract class RequestContextHolder {
+
+    // One per thread (CORE JAVA)
+    private static final ThreadLocal<RequestAttributes> requestAttributesHolder
+            = new ThreadLocal<>();
+
+    public static void setRequestAttributes(RequestAttributes attributes) {
+        requestAttributesHolder.set(attributes);
+    }
+
+    public static RequestAttributes getRequestAttributes() {
+        return requestAttributesHolder.get();
+    }
+
+    public static void resetRequestAttributes() {
+        requestAttributesHolder.remove();
+    }
+}
+
+/*
+==========================================================================================
+2. WHO FILLS RequestContextHolder?
+==========================================================================================
+
+Spring does it via:
+- RequestContextFilter (DEFAULT in Spring Boot)
+OR
+- RequestContextListener
+*/
+
+/*
+==========================================================================================
+3. WHAT RequestContextFilter DOES INTERNALLY
+==========================================================================================
+*/
+
+public class RequestContextFilter /* extends OncePerRequestFilter */ {
+
+    public void doFilter(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain chain) throws Exception {
+
+        // Wrap HttpServletRequest
+        ServletRequestAttributes attributes =
+                new ServletRequestAttributes(request, response);
+
+        // STORE in ThreadLocal
+        RequestContextHolder.setRequestAttributes(attributes);
+
+        try {
+            // Continue Spring filter chain
+            chain.doFilter(request, response);
+        } finally {
+            // VERY IMPORTANT (Tomcat thread reuse)
+            RequestContextHolder.resetRequestAttributes();
+        }
+    }
+}
+
+/*
+==========================================================================================
+4. YES — IT COMES FROM HttpServletRequest
+==========================================================================================
+
+ServletRequestAttributes contains:
+- HttpServletRequest
+- HttpServletResponse
+*/
+
+class ServletRequestAttributes implements RequestAttributes {
+
+    private final HttpServletRequest request;
+    private final HttpServletResponse response;
+
+    public ServletRequestAttributes(
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        this.request = request;
+        this.response = response;
+    }
+
+    public HttpServletRequest getRequest() {
+        return request;
+    }
+}
+
+/*
+==========================================================================================
+5. WHERE DOES "concernId" COME FROM?
+==========================================================================================
+
+YOUR APPLICATION sets it (NOT Spring)
+Usually inside a Filter.
+*/
+
+public class TenantFilter /* extends OncePerRequestFilter */ {
+
+    public void doFilter(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain chain) throws Exception {
+
+        // Read from header / JWT / path
+        String concernId = request.getHeader("X-CONCERN-ID");
+
+        // Store inside HttpServletRequest
+        request.setAttribute("concernId", concernId);
+
+        chain.doFilter(request, response);
+    }
+}
+
+/*
+==========================================================================================
+6. HOW AOP READS concernId WITHOUT PASSING REQUEST
+==========================================================================================
+*/
+
+public class TenantAspect {
+
+    public void beforeServiceMethod() {
+
+        RequestAttributes attributes =
+                RequestContextHolder.getRequestAttributes();
+
+        // SAME AS: request.getAttribute(...)
+        String concernId = (String) attributes.getAttribute(
+                "concernId",
+                RequestAttributes.SCOPE_REQUEST
+        );
+
+        // Store in ThreadLocal for DB usage
+        TenantContext.setConcernId(concernId);
+    }
+}
+
+/*
+==========================================================================================
+7. TENANTCONTEXT (YOUR OWN ThreadLocal)
+==========================================================================================
+*/
+
+public class TenantContext {
+
+    // Shared KEY, per-thread VALUE
+    private static final ThreadLocal<String> CONCERN_ID = new ThreadLocal<>();
+
+    public static void setConcernId(String concernId) {
+        CONCERN_ID.set(concernId);
+    }
+
+    public static String getConcernId() {
+        return CONCERN_ID.get();
+    }
+
+    public static void clear() {
+        CONCERN_ID.remove();
+    }
+}
+
+/*
+==========================================================================================
+8. FULL THREAD VIEW (MENTAL MODEL)
+==========================================================================================
+
+Thread-17
+ ├── RequestContextHolder (ThreadLocal)
+ │     └── HttpServletRequest
+ │           └── concernId
+ └── TenantContext (ThreadLocal)
+       └── concernId
+
+Thread-42
+ ├── RequestContextHolder (ThreadLocal)
+ │     └── HttpServletRequest
+ │           └── concernId
+ └── TenantContext (ThreadLocal)
+       └── concernId
+*/
+
+/*
+==========================================================================================
+9. IMPORTANT EDGE CASES
+==========================================================================================
+
+RequestContextHolder.getRequestAttributes() == NULL when:
+- @Async
+- Scheduler
+- Kafka listener
+- Background thread
+
+Because:
+- No HttpServletRequest exists
+*/
+
+/*
+==========================================================================================
+FINAL ONE-LINER (LOCK THIS IN)
+==========================================================================================
+
+RequestContextHolder is filled by Spring's RequestContextFilter using
+HttpServletRequest and stored in ThreadLocal so any code running on the
+same Tomcat (Java) thread can access request data without passing it.
+==========================================================================================
+*/

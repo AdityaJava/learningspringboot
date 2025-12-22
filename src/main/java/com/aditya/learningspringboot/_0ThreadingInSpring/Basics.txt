@@ -1,0 +1,266 @@
+/*****************************************************************************************
+ * END-TO-END REQUEST → THREAD → SPRING → AOP → DB (TENANT / concernId)
+ *
+ * IMPORTANT:
+ * - This is NOT Spring magic
+ * - This is CORE JAVA (Thread + ThreadLocal)
+ * - Tomcat threads ARE Java threads
+ *****************************************************************************************/
+
+/*
+==========================================================================================
+1. JVM & APPLICATION STARTUP
+==========================================================================================
+
+Command:
+    java -jar spring-boot-app.jar
+
+What happens:
+- One JVM process starts
+- One main Java thread starts
+- Spring Boot starts embedded Tomcat
+*/
+
+public class ApplicationStartup {
+    public static void main(String[] args) {
+        // JVM main thread
+        // Spring Boot initializes Tomcat
+    }
+}
+
+/*
+==========================================================================================
+2. TOMCAT THREADS (VERY IMPORTANT)
+==========================================================================================
+
+Tomcat creates a THREAD POOL.
+These are NOT special threads.
+They are plain java.lang.Thread objects.
+
+- Threads are reused
+- Threads are NOT created per request
+*/
+
+class TomcatThreadPool {
+    /*
+        Example thread pool:
+        Thread-1
+        Thread-2
+        Thread-3
+        ...
+        Thread-200
+     */
+}
+
+/*
+==========================================================================================
+3. REQUEST COMES IN
+==========================================================================================
+
+User hits:
+    GET /orders
+
+Tomcat:
+- Picks ONE idle thread from pool
+- Assigns request to that thread
+*/
+
+class RequestHandlingFlow {
+    /*
+        Request A → Thread-17
+        Request B → Thread-42
+     */
+}
+
+/*
+==========================================================================================
+4. SAME THREAD FLOWS THROUGH ENTIRE SPRING PIPELINE
+==========================================================================================
+
+VERY IMPORTANT:
+Same thread is used from start to end.
+
+Flow:
+    Tomcat Filter
+    → Spring Security Filter
+    → DispatcherServlet
+    → Interceptor
+    → Controller
+    → Service
+    → Repository
+    → Hibernate / JDBC
+    → Response
+*/
+
+class SpringRequestLifecycle {
+    /*
+        Thread-17 executes EVERYTHING for Request A
+     */
+}
+
+/*
+==========================================================================================
+5. THREADLOCAL (CORE JAVA CONCEPT)
+==========================================================================================
+
+ThreadLocal does NOT create new classes.
+ThreadLocal stores data INSIDE the current thread.
+
+Each thread has its OWN ThreadLocalMap.
+*/
+
+public class TenantContext {
+
+    // Shared KEY
+    // Value is stored PER THREAD
+    private static final ThreadLocal<String> CONCERN_ID = new ThreadLocal<>();
+
+    public static void setConcernId(String concernId) {
+        // Internally:
+        // Thread.currentThread().threadLocalMap.put(CONCERN_ID, concernId);
+        CONCERN_ID.set(concernId);
+    }
+
+    public static String getConcernId() {
+        return CONCERN_ID.get();
+    }
+
+    public static void clear() {
+        // VERY IMPORTANT to avoid tenant leakage
+        CONCERN_ID.remove();
+    }
+}
+
+/*
+==========================================================================================
+6. WHY STATIC IS SAFE HERE
+==========================================================================================
+
+static ThreadLocal<String> CONCERN_ID
+
+- static → same KEY shared
+- ThreadLocal → value stored per thread
+
+Thread-17 → CONCERN_ID = TENANT_A
+Thread-42 → CONCERN_ID = TENANT_B
+*/
+
+/*
+==========================================================================================
+7. AOP (SPRING CONCEPT)
+==========================================================================================
+
+AOP runs BEFORE service method.
+It sets tenant into ThreadLocal.
+*/
+
+@Aspect
+class TenantAspect {
+
+    @Before("@annotation(UseTenant)")
+    public void beforeMethod() {
+        // Normally extracted from JWT / Header
+        String concernId = "TENANT_A";
+
+        TenantContext.setConcernId(concernId);
+    }
+
+    @After("@annotation(UseTenant)")
+    public void afterMethod() {
+        // MUST clear because Tomcat reuses threads
+        TenantContext.clear();
+    }
+}
+
+/*
+==========================================================================================
+8. SERVICE METHOD (SAME CODE, MULTIPLE TENANTS)
+==========================================================================================
+
+Even if 2 users call SAME method at SAME time:
+- They run on DIFFERENT threads
+*/
+
+class OrderService {
+
+    @UseTenant
+    public void placeOrder() {
+        // Reads tenant from ThreadLocal
+        String tenant = TenantContext.getConcernId();
+
+        // DB query uses this tenant
+    }
+}
+
+/*
+==========================================================================================
+9. DB / HIBERNATE SIDE
+==========================================================================================
+
+Hibernate asks:
+    "Which tenant am I executing for?"
+
+This happens on SAME thread.
+*/
+
+class HibernateTenantResolver {
+
+    public String resolveCurrentTenantIdentifier() {
+        return TenantContext.getConcernId();
+    }
+}
+
+/*
+==========================================================================================
+10. PARALLEL REQUEST EXAMPLE
+==========================================================================================
+
+Request A:
+    Thread-17
+    TenantContext = TENANT_A
+
+Request B:
+    Thread-42
+    TenantContext = TENANT_B
+
+NO collision because:
+- Different threads
+- Different ThreadLocal values
+*/
+
+/*
+==========================================================================================
+11. AFTER RESPONSE
+==========================================================================================
+
+Tomcat:
+- DOES NOT destroy thread
+- Puts thread back in pool
+
+This is why:
+    TenantContext.clear() IS MANDATORY
+*/
+
+/*
+==========================================================================================
+12. WHO MANAGES WHAT
+==========================================================================================
+
+JVM        → Threads, memory
+Tomcat    → Thread pool, request dispatch
+Spring    → Filters, AOP, DI
+Hibernate → DB interaction
+You        → Business logic
+*/
+
+/*
+==========================================================================================
+FINAL ONE-LINER (REMEMBER THIS)
+==========================================================================================
+
+Tomcat threads ARE Java threads.
+ThreadLocal stores data INSIDE threads.
+Spring AOP only sets & clears ThreadLocal.
+Same method + same code ≠ same data (because threads differ).
+==========================================================================================
+*/
