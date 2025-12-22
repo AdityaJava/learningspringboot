@@ -1,0 +1,71 @@
+/*****************************************************************************************
+ * SPRING AOP WILDCARDS
+ *
+ * *   → EXACTLY ONE item
+ * ..  → ZERO OR MORE items
+ *
+ * These wildcards are heavily used in execution() pointcuts
+ *****************************************************************************************/
+
+@Aspect
+@Component
+public class WildcardAspect {
+
+    /*
+     * * as RETURN TYPE
+     * ----------------
+     * Matches any return type
+     */
+    @Before("execution(* com.example.service.EmployeeService.fetchEmployee(String))")
+    public void anyReturnType() {}
+
+
+    /*
+     * * as METHOD NAME
+     * ----------------
+     * Matches any method name
+     */
+    @Before("execution(* com.example.service.EmployeeService.*(String))")
+    public void anyMethodNameSingleString() {}
+
+
+    /*
+     * * as PARAMETER
+     * --------------
+     * Matches EXACTLY ONE parameter of ANY type
+     */
+    @Before("execution(* com.example.service.EmployeeService.fetchEmployee(*))")
+    public void exactlyOneParamAnyType() {}
+
+
+    /*
+     * .. as PARAMETERS
+     * ----------------
+     * Matches ZERO or MORE parameters
+     */
+    @Before("execution(* com.example.service.EmployeeService.fetchEmployee(..))")
+    public void zeroOrMoreParams() {}
+
+
+    /*
+     * .. as PACKAGE
+     * -------------
+     * Matches current package + ALL sub-packages
+     */
+    @Before("execution(* com.example.service..*(..))")
+    public void allSubPackages() {}
+
+
+    /*
+     * COMBINATION EXAMPLES
+     * --------------------
+     */
+
+    // Any method, any class, any return type, in service package
+    @Before("execution(* com.example.service.*.*(..))")
+    public void broadMatch() {}
+
+    // Any method named fetchEmployee in ANY subpackage
+    @Before("execution(* com.example..*.fetchEmployee(..))")
+    public void methodNameInAnyPackage() {}
+}

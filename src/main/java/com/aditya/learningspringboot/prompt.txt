@@ -1,6 +1,60 @@
+
 Give notes about spring AOP. give in one code window and well indentation and well exampled and
 Take one example and give
+
+A. For execution pointcut
 1. What is PointCut?
 2. execution( public String com.fullpath.Employee.fetchEmployee( )) where public is not mandatory but other things are mandat and we can use * wildcard for single arg and (..) for zero or multiple args/param confirm
 3. How to match any method in that package which has single String type arg
 4. Match fetchEmployee method that take any single param.
+5. wildcards .. for zero or more items and * for 1 item exactly
+6. Example for .. can also be used for package names
+
+B. For within pointcut : Macthes all methods within any class or package
+1. Give example of Employee class  with @Before
+
+c. @within: Matches any method in a class which has this annotation
+1. Give example
+
+d: @annotation: Macthes any method that is annotated with given annotation.
+1. Give example
+
+e: args(String, int): Matches any method with particular arguments (or parameters)
+ 1. example  args(full.package.name.Employee)
+
+f: @args: Matches method with particular parameters and that parameter class is annotated with particular annotation
+1. Give example
+
+g: target: Matches any method on a particular instance or class or interface
+  1. Example @Before(target(full.package.name.Employee))
+
+
+--------------------------------------------------------------------------
+
+1. Combining 2 POintcuts using &&(boolean and) or ||(boolean or)
+ -> Give example to match where the method should be in EmployeeController and should be annotated with @RestController
+ -> Similarlry give with OR
+
+2. Named pointcuts.
+ -> Give example with one method inside aspect with @execution
+
+---------------------------------------------------------------------------
+Advice: It is an action which is taken @Before @After @Around the method execution
+-> Advice we give inside the body of method annotated with above annotations
+-> Give definitions for @Before @After @Around
+-> ProceedingJoinPoint jp for @Around
+
+------------------------------------------
+Answer below questions
+1. How this interception works?
+2. What if we have 1000s of pointcut, so wheneever I invoke a method, does matching happens with 1000s of pointcuts?
+3. Give like when app starts
+  1. Looks for @Aspect annotation classes
+  2. parse the pointcut expression -> Done by PointcutParser.java class
+  3. Stored in a efficient data structure or cache after parsing
+  4. Look for @Component, @Service @Controller etc.
+  5. For each class it check if it is eligible for interception based on pointcut expression -> Done by AbstractAutoProxyCreator.java class
+  6. If Yes it creates a proxy using JDK dynamic proxy or CGLIB(Code generation library) proxy
+     This proxy class has a code which execute advice before the method, the method execution happens and after than advice if any.
+  7. Info:- If our class is already a child of interface then JDK dynamic proxy is used.
+            If class is not a child of any interface then CGLIB is used. This creates a subclass of our class.

@@ -1,0 +1,67 @@
+/*****************************************************************************************
+ * THIS vs TARGET IN SPRING AOP
+ *
+ * this   → PROXY OBJECT TYPE
+ * target → REAL OBJECT TYPE
+ *
+ * Both are checked at RUNTIME
+ *****************************************************************************************/
+
+public interface EmployeeService {
+    String fetchEmployee(String id);
+}
+
+@Service
+public class EmployeeServiceImpl implements EmployeeService {
+
+    @Override
+    public String fetchEmployee(String id) {
+        return "Aditya";
+    }
+}
+
+@Aspect
+@Component
+public class ThisVsTargetAspect {
+
+    /*
+     * target()
+     * --------
+     * Matches based on REAL OBJECT (EmployeeServiceImpl)
+     */
+    @Before("target(com.example.service.EmployeeServiceImpl)")
+    public void targetMatch() {
+        System.out.println("Matched TARGET (real object)");
+    }
+
+
+    /*
+     * this()
+     * ------
+     * Matches based on PROXY TYPE
+     * When JDK dynamic proxy is used, proxy type is INTERFACE
+     */
+    @Before("this(com.example.service.EmployeeService)")
+    public void thisMatch() {
+        System.out.println("Matched THIS (proxy object)");
+    }
+}
+
+/*
+ * IMPORTANT BEHAVIOR
+ * ------------------
+ *
+ * If JDK Dynamic Proxy is used:
+ *   - target(EmployeeServiceImpl) → WORKS
+ *   - this(EmployeeServiceImpl)   → DOES NOT WORK
+ *   - this(EmployeeService)       → WORKS
+ *
+ * If CGLIB Proxy is used:
+ *   - target(EmployeeServiceImpl) → WORKS
+ *   - this(EmployeeServiceImpl)   → WORKS
+ *
+ * RULE OF THUMB
+ * -------------
+ * - Use target() when you care about REAL class
+ * - Use this() when you care about PROXY type
+ */
