@@ -1,0 +1,12 @@
+@Aspect
+@Component
+public class TargetPointcutAspect {
+
+    /*
+     * Matches methods executed on EmployeeService instance
+     */
+    @Before("target(com.example.service.EmployeeService)")
+    public void beforeEmployeeServiceTarget() {
+        System.out.println("Target is EmployeeService instance");
+    }
+}

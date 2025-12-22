@@ -1,0 +1,20 @@
+@Aspect
+@Component
+public class ArgsPointcutAspect {
+
+    /*
+     * Matches methods with (String, int) parameters
+     */
+    @Before("args(String, int)")
+    public void stringAndIntArgs() {
+        System.out.println("Method has String and int args");
+    }
+
+    /*
+     * Matches methods having Employee as parameter
+     */
+    @Before("args(com.example.model.Employee)")
+    public void employeeArg() {
+        System.out.println("Method has Employee argument");
+    }
+}

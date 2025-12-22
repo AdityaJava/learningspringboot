@@ -1,0 +1,14 @@
+/*****************************************************************************************
+ * SPRING AOP – BASIC CONCEPT
+ *
+ * AOP = Aspect Oriented Programming
+ * Purpose:
+ *  - Separate cross-cutting concerns like logging, security, transactions
+ *  - Keep business logic clean
+ *
+ * Core terms:
+ *  - Aspect     : A class containing pointcuts + advice
+ *  - JoinPoint  : A point during execution (method execution in Spring AOP)
+ *  - Pointcut   : Expression that selects which methods to intercept
+ *  - Advice     : Action taken at the join point (@Before, @After, @Around)
+ *****************************************************************************************/

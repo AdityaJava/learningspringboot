@@ -1,0 +1,20 @@
+@Aspect
+@Component
+public class WithinPointcutAspect {
+
+    /*
+     * Matches ALL methods inside EmployeeService
+     */
+    @Before("within(com.example.service.EmployeeService)")
+    public void beforeAnyMethodInEmployeeService() {
+        System.out.println("Within EmployeeService");
+    }
+
+    /*
+     * Matches ALL methods inside service package
+     */
+    @Before("within(com.example.service..*)")
+    public void beforeAnyMethodInServicePackage() {
+        System.out.println("Within service package");
+    }
+}

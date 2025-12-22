@@ -1,0 +1,24 @@
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface Audited {}
+---------------------------------------------------------------
+@Audited
+@Service
+public class EmployeeService {
+
+    public void saveEmployee() {}
+}
+---------------------------------------------------------------
+@Aspect
+@Component
+public class WithinAnnotationAspect {
+
+    /*
+     * Matches ALL methods of classes annotated with @Audited
+     */
+    @Before("@within(com.example.annotation.Audited)")
+    public void beforeAuditedClassMethods() {
+        System.out.println("Class has @Audited annotation");
+    }
+}
+---------------------------------------------------------------

@@ -1,0 +1,20 @@
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface Validated {}
+
+@Validated
+public class Employee {}
+
+@Aspect
+@Component
+public class ArgsAnnotationAspect {
+
+    /*
+     * Matches methods where PARAMETER CLASS
+     * is annotated with @Validated
+     */
+    @Before("@args(com.example.annotation.Validated)")
+    public void beforeValidatedParameter() {
+        System.out.println("Parameter class has @Validated");
+    }
+}

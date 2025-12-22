@@ -1,0 +1,10 @@
+| Pointcut      | Think As             |
+| ------------- | -------------------- |
+| `execution`   | Method signature     |
+| `within`      | Class / package      |
+| `@within`     | Class annotation     |
+| `@annotation` | Method annotation    |
+| `args`        | Method parameters    |
+| `@args`       | Parameter annotation |
+| `target`      | Real object          |
+| `this`        | Proxy object         |

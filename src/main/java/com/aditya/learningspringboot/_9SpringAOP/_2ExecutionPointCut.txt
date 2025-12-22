@@ -1,0 +1,52 @@
+@Aspect
+@Component
+public class ExecutionPointcutAspect {
+
+    /*
+     * Matches ONLY fetchEmployee(String) method
+     */
+    @Before("execution(public String com.example.service.EmployeeService.fetchEmployee(String))")
+    public void exactMatch() {
+        System.out.println("Exact execution match");
+    }
+
+    /*
+     * public is optional
+     */
+    @Before("execution(String com.example.service.EmployeeService.fetchEmployee(String))")
+    public void withoutPublic() {
+        System.out.println("Execution without public");
+    }
+
+    /*
+     * Any method in service package with SINGLE String argument
+     */
+    @Before("execution(* com.example.service.*.*(String))")
+    public void anyMethodSingleStringArg() {
+        System.out.println("Any method with single String arg");
+    }
+
+    /*
+     * fetchEmployee with ANY SINGLE parameter
+     */
+    @Before("execution(* com.example.service.EmployeeService.fetchEmployee(*))")
+    public void fetchEmployeeAnySingleParam() {
+        System.out.println("fetchEmployee with any single param");
+    }
+
+    /*
+     * Zero or more parameters
+     */
+    @Before("execution(* com.example.service.EmployeeService.*(..))")
+    public void zeroOrMoreParams() {
+        System.out.println("Zero or more params");
+    }
+
+    /*
+     * .. used for sub-packages
+     */
+    @Before("execution(* com.example.service..*(..))")
+    public void subPackages() {
+        System.out.println("Sub-package match");
+    }
+}

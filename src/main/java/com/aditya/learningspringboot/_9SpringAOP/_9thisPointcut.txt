@@ -1,0 +1,14 @@
+// Interview Fav
+
+@Aspect
+@Component
+public class ThisPointcutAspect {
+
+    /*
+     * Matches proxy object type
+     */
+    @Before("this(com.example.service.EmployeeService)")
+    public void beforeProxyInstance() {
+        System.out.println("Proxy instance is EmployeeService");
+    }
+}

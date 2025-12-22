@@ -1,0 +1,23 @@
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Loggable {}
+
+@Service
+public class EmployeeService {
+
+    @Loggable
+    public void updateEmployee() {}
+}
+
+@Aspect
+@Component
+public class AnnotationPointcutAspect {
+
+    /*
+     * Matches ONLY methods annotated with @Loggable
+     */
+    @Before("@annotation(com.example.annotation.Loggable)")
+    public void beforeLoggableMethod() {
+        System.out.println("Method has @Loggable annotation");
+    }
+}
