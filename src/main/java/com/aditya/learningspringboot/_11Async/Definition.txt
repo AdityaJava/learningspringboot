@@ -1,0 +1,226 @@
+/**
+ * 🔥 Ultimate Deep Dive: Async Annotation & Thread Pools in Spring Boot 🔥
+ *
+ * 1️⃣ What is a Thread Pool? Why do we need it?
+ * ---------------------------------------------
+ * - Threads are OS/JVM execution units; each thread has memory and CPU overhead.
+ * - Creating a new thread for every task is expensive and can exhaust system resources.
+ * - A Thread Pool:
+ *    - Maintains a set of pre-created threads (workers) ready to execute tasks.
+ *    - Reuses threads by assigning new tasks once previous tasks complete.
+ * - Benefits: Reduced overhead, better resource management, improved performance.
+ *
+ * 2️⃣ Thread Pool Parameters and How They Work
+ * -------------------------------------------
+ * | Parameter       | Meaning                                                      |
+ * |-----------------|--------------------------------------------------------------|
+ * | Core Pool Size  | Minimum threads kept alive, even if idle                      |
+ * | Max Pool Size   | Maximum threads allowed under load                            |
+ * | Queue Capacity  | Number of tasks waiting if all core threads are busy         |
+ *
+ * Task handling logic:
+ * 1. If running threads < core pool size, create new thread and run task immediately.
+ * 2. If running threads >= core pool size, queue the task.
+ * 3. If queue is full and running threads < max pool size, create new thread for task.
+ * 4. If queue is full and max pool size reached, reject the task (throws exception by default).
+ *
+ * 3️⃣ @Async Annotation in Spring
+ * -------------------------------
+ * - Marks method to be executed asynchronously.
+ * - Caller thread does not wait; method executes in separate thread.
+ * - Requires async executor (thread pool).
+ * - Useful for long-running or parallel tasks (e.g., emails, API calls).
+ *
+ * 4️⃣ @EnableAsync Annotation
+ * ---------------------------
+ * - Enables Spring’s asynchronous method execution.
+ * - Must be added to a @Configuration class.
+ * - Registers proxies to intercept @Async method calls.
+ *
+ * 5️⃣ What Executor Does Spring Boot Use By Default?
+ * -------------------------------------------------
+ * - Checks if a TaskExecutor/Executor bean is defined.
+ * - If found (usually ThreadPoolTaskExecutor), uses it for @Async.
+ * - Otherwise, falls back to SimpleAsyncTaskExecutor which creates a new thread every time.
+ *
+ * 6️⃣ Why SimpleAsyncTaskExecutor Is NOT Recommended
+ * -------------------------------------------------
+ * - Creates new thread for every task (no reuse).
+ * - High CPU and memory overhead.
+ * - Risk of thread exhaustion under load.
+ * - Not suitable for production.
+ *
+ * 7️⃣ Why Use ThreadPoolTaskExecutor Instead?
+ * ------------------------------------------
+ * - Wraps Java’s ThreadPoolExecutor.
+ * - Manages core/max threads and queue.
+ * - Reuses threads efficiently.
+ * - Allows configuring rejection policy, thread name prefix, graceful shutdown.
+ *
+ * 8️⃣ Why NOT Use Spring Boot’s Default ThreadPoolTaskExecutor As-Is?
+ * -------------------------------------------------------------------
+ * - Default: core size = 1, max size = Integer.MAX_VALUE, unbounded queue.
+ * - Unbounded queue causes tasks to pile up → increased latency.
+ * - New threads created only when queue fills, which never happens → poor CPU utilization.
+ * - Risk of memory OOM or latency spikes.
+ * - Not production-tuned, must customize.
+ *
+ * 9️⃣ When Are New Threads Created?
+ * --------------------------------
+ * - New threads created only after queue is full.
+ * - Queue buffers tasks to avoid creating too many threads unnecessarily.
+ *
+ * 🔟 What If You Define Raw Java ThreadPoolExecutor Bean?
+ * ------------------------------------------------------
+ * - Spring Boot does NOT auto-detect ThreadPoolExecutor beans as async executor.
+ * - If no recognized executor found, falls back to SimpleAsyncTaskExecutor.
+ * - Always use ThreadPoolTaskExecutor or implement AsyncConfigurer.
+ *
+ * 1️⃣1️⃣ What Happens If Queue & Max Pool Are Full?
+ * -----------------------------------------------
+ * - New tasks are rejected.
+ * - Default rejection policy throws RejectedExecutionException.
+ * - Can customize policies to CallerRuns, Discard, etc.
+ *
+ * 1️⃣2️⃣ How to Define Custom ThreadPoolTaskExecutor
+ * -------------------------------------------------
+ * - Configure corePoolSize, maxPoolSize, queueCapacity explicitly.
+ * - Set threadNamePrefix for debugging.
+ * - Set rejection policy and graceful shutdown.
+ *
+ * 1️⃣3️⃣ How to Set Executor as Default for All @Async
+ * ---------------------------------------------------
+ * - Implement AsyncConfigurer interface.
+ * - Override getAsyncExecutor() and return your executor.
+ * - Annotate config with @EnableAsync.
+ *
+ * 1️⃣4️⃣ Exception Handling in Async Methods
+ * -----------------------------------------
+ * - Exceptions in async void methods are uncaught by default.
+ * - Implement AsyncUncaughtExceptionHandler to handle/log these exceptions.
+ *
+ * ---------------------------------------------------------------------------------------
+ * 🧑‍💻 Complete Working Example: Custom Async Config with ThreadPoolTaskExecutor
+ */
+
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
+
+@Configuration
+@EnableAsync // Enables Spring @Async processing
+public class AsyncConfig implements AsyncConfigurer {
+
+    /**
+     * Provides the default executor for @Async methods.
+     * Configured with:
+     * - corePoolSize = 2
+     * - maxPoolSize = 4
+     * - queueCapacity = 3
+     * - threadNamePrefix = "MyAsyncThread-"
+     * - rejection policy = CallerRunsPolicy (caller runs task if saturated)
+     * - graceful shutdown: waits for tasks to complete
+     */
+    @Override
+    public Executor getAsyncExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        executor.setCorePoolSize(2);              // Minimum threads always alive
+        executor.setMaxPoolSize(4);               // Maximum concurrent threads
+        executor.setQueueCapacity(3);             // Queue size for waiting tasks
+        executor.setThreadNamePrefix("MyAsyncThread-");
+
+        // Handle rejected tasks by running them in caller thread
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+
+        // Graceful shutdown: wait for async tasks to complete
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+
+        executor.initialize();
+        return executor;
+    }
+
+    /**
+     * Handles uncaught exceptions thrown from async void methods.
+     * Logs method name and stack trace for debugging.
+     */
+    @Override
+    public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+        return (throwable, method, params) -> {
+            System.err.println("Exception in async method: " + method.getName());
+            System.err.println("Exception message: " + throwable.getMessage());
+            throwable.printStackTrace();
+        };
+    }
+}
+
+/**
+ * ----------------------------------------------------------------------------------------
+ * Example Service Using @Async
+ */
+
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+@Service
+public class EmailService {
+
+    @Async // Runs asynchronously on configured thread pool
+    public void sendEmail(String to, String subject, String body) {
+        System.out.println("Sending email on thread: " + Thread.currentThread().getName());
+        // Simulate delay
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        System.out.println("Email sent to: " + to);
+    }
+}
+
+/**
+ * ----------------------------------------------------------------------------------------
+ * What Happens When sendEmail() Is Called?
+ *
+ * - Caller thread continues immediately without waiting.
+ * - Method executes on a thread named like "MyAsyncThread-1" from the thread pool.
+ * - If all threads busy and queue full, the caller thread runs the task (CallerRunsPolicy).
+ * - Uncaught exceptions in async void methods logged by AsyncUncaughtExceptionHandler.
+ *
+ * ----------------------------------------------------------------------------------------
+ * Summary of Benefits:
+ *
+ * | Problem                         | Solution Provided by Custom ThreadPoolTaskExecutor        |
+ * |--------------------------------|------------------------------------------------------------|
+ * | Thread creation overhead        | Thread reuse in pool reduces overhead                      |
+ * | Latency under load              | Queue buffers tasks and pool grows threads as needed      |
+ * | Thread exhaustion and mem use  | Limits max threads and rejection policy prevent overload  |
+ * | Debugging                     | Thread name prefix and exception handler                   |
+ * | Fallback to SimpleExecutor      | AsyncConfigurer forces use of custom executor             |
+ *
+ * ----------------------------------------------------------------------------------------
+ * Tuning Tips:
+ *
+ * - Set corePoolSize based on average concurrency needs.
+ * - Set maxPoolSize for peak load.
+ * - Set queueCapacity to balance latency and memory.
+ * - Monitor pool usage with JMX or Micrometer.
+ * - Adjust based on real-world app behavior.
+ *
+ * ----------------------------------------------------------------------------------------
+ * 🚀 TL;DR:
+ *
+ * - @Async requires an Executor.
+ * - Spring Boot defaults to SimpleAsyncTaskExecutor if no executor is defined → bad for production.
+ * - Always define and configure a ThreadPoolTaskExecutor.
+ * - Use AsyncConfigurer to set your executor as default globally.
+ * - Provide thread name prefix & async exception handler.
+ * - Tune parameters based on load and hardware.
+ *
+ * ----------------------------------------------------------------------------------------
+ */
