@@ -1,0 +1,116 @@
+// Step 1: Explanation and Custom Annotation Example
+
+/*
+ * 1. Annotations in Java:
+ *    - Annotations provide metadata to Java code elements (classes, methods, variables).
+ *    - They can influence compile-time checks, code generation, or runtime behavior.
+ *
+ * 2. @Target annotation:
+ *    - Defines where the annotation can be applied.
+ *    - Common ElementType values:
+ *      * METHOD - annotation can be applied on methods.
+ *      * TYPE - classes, interfaces, enums.
+ *      * FIELD - member variables.
+ *    - Example: @Target(ElementType.METHOD) restricts usage to methods only.
+ *
+ * 3. @Retention annotation:
+ *    - Defines how long the annotation information is retained.
+ *    - RetentionPolicy options:
+ *      * SOURCE: discarded by compiler, not in bytecode.
+ *      * CLASS: in bytecode but not available at runtime via reflection.
+ *      * RUNTIME: available at runtime, can be read by reflection (needed for AOP).
+ *
+ * 4. Custom Annotation methods (fields):
+ *    - Annotations do NOT have method parameters or body like normal methods.
+ *    - Allowed return types for annotation methods:
+ *       Primitive types (int, boolean, etc), String, Class<?>, Enums, other annotations, or arrays of these types.
+ *    - Methods usually have default values, so usage can omit them if defaults suffice.
+ *
+ * 5. Example Custom Annotation:
+ *    - Define annotation @MyCustomAnnotation with methods having defaults.
+ *    - Used to add metadata on methods to be intercepted at runtime.
+ */
+
+package full.path;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.annotation.ElementType;
+
+// Specifies annotation can be applied on methods only
+@Target(ElementType.METHOD)
+// Keeps annotation information at runtime for reflection and AOP
+@Retention(RetentionPolicy.RUNTIME)
+public @interface MyCustomAnnotation {
+    int intKey() default 0;
+    String stringKey() default "defaultString";
+    Class<?> classTypeKey() default String.class;
+    MyCustomEnum enumKey() default MyCustomEnum.ENUM_VAL1;
+    String[] stringArrayKey() default {"default1", "default2"};
+    int[] intArrayKey() default {1, 2};
+}
+
+// Enum type used inside the annotation
+enum MyCustomEnum {
+    ENUM_VAL1,
+    ENUM_VAL2
+}
+
+// Step 2: Aspect Interceptor Using @Around for Custom Annotation
+
+package full.path;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Method;
+
+/*
+ * Aspect class intercepts method calls annotated with @MyCustomAnnotation.
+ *
+ * @Aspect marks this class as an aspect for Spring AOP.
+ * @Component makes it a Spring-managed bean.
+ *
+ * The @Around advice intercepts method execution:
+ *  - Uses the annotation's fully qualified path in the pointcut expression.
+ *  - Retrieves the method object from the join point.
+ *  - Checks if the method has the annotation.
+ *  - Reads annotation properties and logs them.
+ *  - Calls proceed() to continue the original method execution.
+ */
+
+@Aspect
+@Component
+public class MyCustomAnnotationInterceptor {
+
+    @Around("@annotation(full.path.MyCustomAnnotation)")
+    public Object invoke(ProceedingJoinPoint joinPoint) throws Throwable {
+        Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
+
+        if (method.isAnnotationPresent(MyCustomAnnotation.class)) {
+            MyCustomAnnotation annotation = method.getAnnotation(MyCustomAnnotation.class);
+            System.out.println("MyCustomAnnotation detected on method: " + method.getName());
+            System.out.println("intKey = " + annotation.intKey());
+            System.out.println("stringKey = " + annotation.stringKey());
+            System.out.println("classTypeKey = " + annotation.classTypeKey().getSimpleName());
+            System.out.println("enumKey = " + annotation.enumKey());
+            System.out.print("stringArrayKey = ");
+            for (String s : annotation.stringArrayKey()) {
+                System.out.print(s + " ");
+            }
+            System.out.println();
+            System.out.print("intArrayKey = ");
+            for (int i : annotation.intArrayKey()) {
+                System.out.print(i + " ");
+            }
+            System.out.println();
+        }
+
+        // Proceed with the original method execution
+        return joinPoint.proceed();
+    }
+}
