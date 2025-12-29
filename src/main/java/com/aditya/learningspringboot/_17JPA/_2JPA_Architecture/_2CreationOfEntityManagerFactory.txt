@@ -16,6 +16,20 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import javax.sql.DataSource;
 import java.util.Properties;
 
+/**
+ * ==========================================================
+ * JPA INFRASTRUCTURE CONFIGURATION
+ * ==========================================================
+ *
+ * This class manually wires all JPA components instead of
+ * relying on Spring Boot auto-configuration.
+ *
+ * Useful for:
+ *  - Understanding JPA internals
+ *  - Multiple databases
+ *  - Multi-tenancy
+ *  - Interview-level clarity
+ */
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(
@@ -25,34 +39,85 @@ import java.util.Properties;
 )
 public class JpaConfig {
 
-    // --------------------------------------------------
-    // 1. DataSource
-    // --------------------------------------------------
+    /**
+     * ==========================================================
+     * 1. DataSource
+     * ==========================================================
+     *
+     * WHY REQUIRED?
+     * - DataSource is the factory for DB connections
+     * - All DB access starts from DataSource
+     * - Hibernate uses DataSource to get JDBC connections
+     *
+     * WHY HIKARI?
+     * - Fastest connection pool
+     * - Production default in Spring Boot
+     *
+     * @ConfigurationProperties:
+     * - Binds properties from application.yml
+     *   spring.datasource.url
+     *   spring.datasource.username
+     *   spring.datasource.password
+     */
     @Bean
     @ConfigurationProperties(prefix = "spring.datasource")
     public DataSource dataSource() {
         return new HikariDataSource();
     }
 
-    // --------------------------------------------------
-    // 2. JpaVendorAdapter
-    // --------------------------------------------------
+    /**
+     * ==========================================================
+     * 2. JpaVendorAdapter
+     * ==========================================================
+     *
+     * WHY REQUIRED?
+     * - JPA is just a specification
+     * - Hibernate is the actual implementation
+     * - This adapter bridges Spring JPA ↔ Hibernate
+     *
+     * WHAT IT DEFINES?
+     * - Database dialect (MySQL, Oracle, Postgres, etc.)
+     * - SQL logging
+     * - DDL generation behavior
+     */
     @Bean
     public JpaVendorAdapter jpaVendorAdapter() {
 
         HibernateJpaVendorAdapter adapter =
                 new HibernateJpaVendorAdapter();
 
+        // Generates DB-specific SQL
         adapter.setDatabasePlatform("org.hibernate.dialect.MySQLDialect");
+
+        // Prints SQL queries in logs
         adapter.setShowSql(true);
+
+        // Prevents Hibernate from auto-creating tables
         adapter.setGenerateDdl(false);
 
         return adapter;
     }
 
-    // --------------------------------------------------
-    // 3. EntityManagerFactory
-    // --------------------------------------------------
+    /**
+     * ==========================================================
+     * 3. EntityManagerFactory
+     * ==========================================================
+     *
+     * MOST IMPORTANT JPA COMPONENT
+     *
+     * KEY RULE:
+     * - One Persistence Unit = One EntityManagerFactory
+     * - One EntityManagerFactory = Many EntityManagers
+     *
+     * WHAT IT HOLDS?
+     * - DataSource
+     * - Entity classes
+     * - Hibernate configuration
+     *
+     * WHY REQUIRED?
+     * - Creates EntityManager instances
+     * - Without this, JPA cannot work
+     */
     @Bean
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             DataSource dataSource,
@@ -61,18 +126,43 @@ public class JpaConfig {
         LocalContainerEntityManagerFactoryBean emf =
                 new LocalContainerEntityManagerFactoryBean();
 
+        // DB connection factory
         emf.setDataSource(dataSource);
+
+        // Hibernate as JPA provider
         emf.setJpaVendorAdapter(jpaVendorAdapter);
+
+        // Where @Entity classes are located
         emf.setPackagesToScan("com.example.entity");
+
+        // Logical name of persistence unit
         emf.setPersistenceUnitName("default-persistence-unit");
+
+        // Hibernate specific properties
         emf.setJpaProperties(jpaProperties());
 
         return emf;
     }
 
-    // --------------------------------------------------
-    // 4. Transaction Manager
-    // --------------------------------------------------
+    /**
+     * ==========================================================
+     * 4. Transaction Manager
+     * ==========================================================
+     *
+     * WHY REQUIRED?
+     * - Controls transaction lifecycle
+     *   begin()
+     *   commit()
+     *   rollback()
+     *
+     * ENABLES:
+     * - @Transactional annotation
+     *
+     * WHAT HAPPENS INTERNALLY?
+     * - Before method → start transaction
+     * - On success → commit
+     * - On exception → rollback
+     */
     @Bean
     public PlatformTransactionManager transactionManager(
             EntityManagerFactory entityManagerFactory) {
@@ -80,17 +170,36 @@ public class JpaConfig {
         return new JpaTransactionManager(entityManagerFactory);
     }
 
-    // --------------------------------------------------
-    // 5. Hibernate Properties
-    // --------------------------------------------------
+    /**
+     * ==========================================================
+     * 5. Hibernate / JPA Properties
+     * ==========================================================
+     *
+     * WHY REQUIRED?
+     * - Controls Hibernate behavior
+     * - Prevents dangerous defaults in production
+     */
     private Properties jpaProperties() {
 
         Properties props = new Properties();
 
+        // Schema management strategy
         props.put("hibernate.hbm2ddl.auto", "none");
+
+        // Pretty SQL logs
         props.put("hibernate.format_sql", true);
+
+        // Prevents timezone-related bugs
         props.put("hibernate.jdbc.time_zone", "UTC");
 
         return props;
     }
 }
+
+🧠 One-line Interview Summary (remember this)
+
+DataSource → DB connections
+EntityManagerFactory → Creates EntityManagers
+EntityManager → Talks to DB
+TransactionManager → Commit / Rollback
+JpaVendorAdapter → Hibernate wiring

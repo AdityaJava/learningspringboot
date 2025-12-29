@@ -1,0 +1,197 @@
+/*****************************************************************************************
+ * JPA CORE CONCEPTS — THEORY + CODE (SIMPLE & PRACTICAL)
+ *****************************************************************************************/
+
+/*
+==========================================================================================
+1. Persistence Unit
+==========================================================================================
+• A Persistence Unit is a logical configuration unit in JPA.
+• It defines:
+  - DataSource / DB connection
+  - JPA provider (Hibernate)
+  - Entity classes
+  - JPA properties
+
+• One Persistence Unit creates exactly ONE EntityManagerFactory.
+• If application connects to:
+    - H2 DB  -> PersistenceUnit_H2 -> EntityManagerFactory_H2
+    - MySQL  -> PersistenceUnit_MYSQL -> EntityManagerFactory_MYSQL
+
+ENTITY:
+- :contentReference[oaicite:0]{index=0}
+*/
+
+/*
+==========================================================================================
+2. EntityManagerFactory
+==========================================================================================
+• Heavy-weight object.
+• Created once per Persistence Unit.
+• Thread-safe.
+• Responsible for creating EntityManager instances.
+
+• Lifecycle:
+    Application startup  -> EntityManagerFactory created
+    Application shutdown -> EntityManagerFactory closed
+
+ENTITY:
+- :contentReference[oaicite:1]{index=1}
+*/
+
+/*
+==========================================================================================
+3. Transaction Manager & EntityManagerFactory Association
+==========================================================================================
+• Each EntityManagerFactory has exactly ONE TransactionManager.
+• Transaction type options:
+
+1) RESOURCE_LOCAL (DEFAULT)
+   - Used in Spring Boot
+   - Uses JpaTransactionManager
+   - Local DB transactions
+
+2) JTA (Java Transaction API)
+   - Used in distributed transactions
+   - Multiple DBs / messaging systems
+
+• Yes ✔️
+  ONE EntityManagerFactory -> ONE TransactionManager
+
+ENTITY:
+- :contentReference[oaicite:2]{index=2}
+- :contentReference[oaicite:3]{index=3}
+- :contentReference[oaicite:4]{index=4}
+*/
+
+/*
+==========================================================================================
+4. EntityManager & Persistence Context
+==========================================================================================
+• EntityManager is like a Hibernate Session.
+• NOT thread-safe.
+• Created per request / per transaction.
+
+• Responsibilities:
+  - persist()  -> INSERT
+  - merge()    -> UPDATE
+  - find()     -> SELECT by PK
+  - remove()   -> DELETE
+  - createQuery() -> JPQL
+
+• EntityManager is implemented by JPA vendors like Hibernate.
+
+ENTITY:
+- :contentReference[oaicite:5]{index=5}
+- :contentReference[oaicite:6]{index=6}
+*/
+
+/*
+==========================================================================================
+5. Persistence Context
+==========================================================================================
+• Persistence Context = First Level Cache.
+• Created for EACH EntityManager.
+• Tracks entities managed by EntityManager.
+
+Responsibilities:
+✔ First-level caching
+✔ Dirty checking
+✔ Entity lifecycle management
+
+• When EntityManager is closed -> Persistence Context is destroyed.
+
+ENTITY:
+- :contentReference[oaicite:7]{index=7}
+*/
+
+/*
+==========================================================================================
+6. Transaction Boundaries
+==========================================================================================
+• INSERT / UPDATE / DELETE
+  → MUST be inside an active transaction.
+  → Otherwise throws TransactionRequiredException.
+
+• READ operations (find, JPQL select)
+  → Can work WITHOUT transaction (but not recommended).
+
+✔ Spring @Transactional manages this automatically.
+*/
+
+/*
+==========================================================================================
+7. Direct EntityManager Usage — SIMPLE SAVE USER EXAMPLE
+==========================================================================================
+*/
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
+// ---------------------- ENTITY ----------------------
+@Entity
+class User {
+
+    @Id
+    private Long id;
+    private String name;
+
+    // getters & setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}
+
+// ---------------------- MAIN CLASS ----------------------
+public class JpaDirectUsageExample {
+
+    public static void main(String[] args) {
+
+        // 1️⃣ Create EntityManagerFactory (from Persistence Unit)
+        EntityManagerFactory emf =
+                Persistence.createEntityManagerFactory("myPersistenceUnit");
+
+        // 2️⃣ Create EntityManager
+        EntityManager em = emf.createEntityManager();
+
+        // 3️⃣ Get Transaction
+        EntityTransaction transaction = em.getTransaction();
+
+        try {
+            transaction.begin(); // START TRANSACTION
+
+            User user = new User();
+            user.setId(1L);
+            user.setName("Aditya");
+
+            em.persist(user); // INSERT
+
+            transaction.commit(); // COMMIT
+        } catch (Exception e) {
+            transaction.rollback(); // ROLLBACK on failure
+        } finally {
+            em.close();   // closes Persistence Context
+            emf.close();  // application shutdown
+        }
+    }
+}
+
+/*
+==========================================================================================
+INTERVIEW SUMMARY (ONE-LINERS)
+==========================================================================================
+• Persistence Unit → Config block → creates EntityManagerFactory
+• EntityManagerFactory → Heavy, thread-safe, one per PU
+• EntityManager → Lightweight, NOT thread-safe
+• Persistence Context → First-level cache
+• One EntityManagerFactory → One TransactionManager
+• DML operations → Transaction mandatory
+• SELECT → Can run without transaction (not recommended)
+==========================================================================================
+*/

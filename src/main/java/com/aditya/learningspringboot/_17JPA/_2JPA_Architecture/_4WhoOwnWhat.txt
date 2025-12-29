@@ -1,0 +1,212 @@
+/*****************************************************************************************
+ * JPA / HIBERNATE / SPRING / SPRING BOOT — WHO OWNS WHAT (SINGLE FILE NOTES)
+ *
+ * BIG PICTURE:
+ *
+ * JPA (Specification)
+ *    ↑
+ * Hibernate (Implementation)
+ *    ↑
+ * Spring Framework (Glue + Transactions)
+ *    ↑
+ * Spring Boot (Auto Configuration)
+ *
+ *****************************************************************************************/
+
+/*
+==========================================================================================
+1. JPA (Java Persistence API) — SPECIFICATION ONLY
+==========================================================================================
+OWNED BY JPA:
+• @Entity, @Id, @Table, @Column
+• PersistenceUnit
+• EntityManager
+• EntityManagerFactory
+• PersistenceContext
+• Query, TypedQuery
+• JPQL
+• Transaction rules (concept)
+
+ROLE:
+• Defines WHAT should exist
+• Does NOT implement anything
+*/
+
+/*
+==========================================================================================
+2. HIBERNATE — JPA IMPLEMENTATION
+==========================================================================================
+OWNED BY HIBERNATE:
+• Implements EntityManager
+• Implements EntityManagerFactory
+• Persistence Context implementation
+• Dirty checking
+• First-level cache
+• Second-level cache
+• HQL
+• Lazy loading
+• Session / SessionFactory
+• SQL generation
+
+ROLE:
+• Executes actual DB operations
+*/
+
+/*
+==========================================================================================
+3. SPRING FRAMEWORK — INTEGRATION & TRANSACTIONS
+==========================================================================================
+OWNED BY SPRING:
+• @Transactional
+• PlatformTransactionManager
+• JpaTransactionManager
+• Transaction propagation
+• Exception translation
+• Dependency Injection
+
+ROLE:
+• Manages transactions
+• Connects application to JPA/Hibernate
+*/
+
+/*
+==========================================================================================
+4. SPRING DATA JPA — REPOSITORY ABSTRACTION
+==========================================================================================
+OWNED BY SPRING DATA JPA:
+• JpaRepository
+• CrudRepository
+• PagingAndSortingRepository
+• Derived query methods
+• @Query
+• Auditing
+
+ROLE:
+• Eliminates boilerplate DAO code
+*/
+
+/*
+==========================================================================================
+5. SPRING BOOT — AUTO CONFIGURATION
+==========================================================================================
+OWNED BY SPRING BOOT:
+• Auto-configured DataSource
+• Auto-configured EntityManagerFactory
+• Auto-configured TransactionManager
+• Auto-configured Hibernate
+• Property-based configuration
+• Embedded server
+
+ROLE:
+• Sensible defaults
+• Zero / minimal configuration
+*/
+
+/*
+==========================================================================================
+6. WHO CREATES WHAT (IMPORTANT)
+==========================================================================================
+Component                     Created By
+--------------------------------------------------
+DataSource                    Spring Boot
+EntityManagerFactory          Spring Boot (via Hibernate)
+EntityManager                 Spring (per transaction/request)
+Persistence Context           Hibernate
+TransactionManager            Spring
+SQL                            Hibernate
+DB Connections                HikariCP
+*/
+
+/*
+==========================================================================================
+7. RELATIONSHIP FLOW
+==========================================================================================
+Spring Boot
+   |
+   |--> Spring Framework
+   |        |
+   |        |--> JpaTransactionManager
+   |
+   |--> Spring Data JPA
+   |
+   |--> Hibernate
+            |
+            |--> EntityManager (implementation)
+            |--> Persistence Context
+            |--> SQL
+*/
+
+/*
+==========================================================================================
+8. CONSOLIDATED CODE — OWNERSHIP DEMO
+==========================================================================================
+*/
+
+// ---------- JPA (Specification) ----------
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
+// ---------- Spring ----------
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+// ---------- Spring Data JPA ----------
+import org.springframework.data.jpa.repository.JpaRepository;
+
+// ---------- Entity ----------
+@Entity
+class User {
+
+    @Id
+    private Long id;
+    private String name;
+
+    // getters & setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+}
+
+// ---------- Repository (Spring Data JPA) ----------
+interface UserRepository extends JpaRepository<User, Long> {
+
+    // Derived query (Spring Data JPA creates implementation)
+    User findByName(String name);
+}
+
+// ---------- Service Layer ----------
+@Service
+class UserService {
+
+    // Injected by Spring, implemented by Hibernate
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    // Transaction managed by Spring
+    @Transactional
+    public void saveUser() {
+
+        User user = new User();
+        user.setId(1L);
+        user.setName("Aditya");
+
+        // JPA method, Hibernate executes SQL
+        entityManager.persist(user);
+    }
+}
+
+/*
+==========================================================================================
+9. INTERVIEW ONE-LINERS (MEMORIZE)
+==========================================================================================
+• JPA → Contract
+• Hibernate → Implementation
+• Spring → Transaction + Integration
+• Spring Data JPA → Repository abstraction
+• Spring Boot → Auto configuration
+==========================================================================================
+*/

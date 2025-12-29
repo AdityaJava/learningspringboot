@@ -1,0 +1,169 @@
+/*****************************************************************************************
+ * @Transactional — INTERNAL FLOW (SPRING + JPA + HIBERNATE)
+ *
+ * REQUEST → DATABASE → COMMIT / ROLLBACK
+ *****************************************************************************************/
+
+/*
+==========================================================================================
+STEP 0: CLIENT CALLS METHOD
+==========================================================================================
+Controller / Service method annotated with @Transactional is invoked.
+*/
+
+/*
+==========================================================================================
+STEP 1: SPRING AOP PROXY INTERCEPTS METHOD
+==========================================================================================
+• Spring creates a proxy around the bean.
+• Proxy detects @Transactional.
+
+ENTITY:
+- Spring AOP
+*/
+
+/*
+==========================================================================================
+STEP 2: TRANSACTION MANAGER IS SELECTED
+==========================================================================================
+• Spring Boot auto-configures:
+    JpaTransactionManager
+
+• JpaTransactionManager is bound to ONE EntityManagerFactory.
+
+ENTITY:
+- JpaTransactionManager
+*/
+
+/*
+==========================================================================================
+STEP 3: TRANSACTION BEGINS
+==========================================================================================
+JpaTransactionManager does:
+• Create EntityManager (if not exists)
+• Create Persistence Context
+• Open DB connection
+• Begin transaction
+
+IMPORTANT:
+• EntityManager is bound to current thread (ThreadLocal)
+*/
+
+/*
+==========================================================================================
+STEP 4: BUSINESS LOGIC EXECUTES
+==========================================================================================
+When you call:
+• entityManager.persist()
+• entityManager.merge()
+• entityManager.remove()
+
+WHAT HAPPENS:
+• Hibernate stores changes in Persistence Context
+• NO SQL EXECUTED YET (write-behind)
+
+Reads:
+• entityManager.find()
+• JPQL select
+• Uses Persistence Context (1st level cache) first
+*/
+
+/*
+==========================================================================================
+STEP 5: TRANSACTION COMMIT
+==========================================================================================
+If method completes successfully:
+• Hibernate performs dirty checking
+• Generates SQL
+• Executes INSERT / UPDATE / DELETE
+• Commits DB transaction
+• Clears Persistence Context
+*/
+
+/*
+==========================================================================================
+STEP 6: TRANSACTION ROLLBACK (ON EXCEPTION)
+==========================================================================================
+If RuntimeException occurs:
+• Spring marks transaction as rollback-only
+• Hibernate discards Persistence Context
+• DB changes are NOT committed
+*/
+
+/*
+==========================================================================================
+STEP 7: CLEANUP
+==========================================================================================
+• EntityManager closed
+• DB connection returned to pool (HikariCP)
+*/
+
+/*
+==========================================================================================
+VISUAL FLOW (IMPORTANT)
+==========================================================================================
+
+Client
+  |
+  v
+Spring Proxy (@Transactional)
+  |
+  v
+JpaTransactionManager
+  |
+  v
+EntityManager (Thread-bound)
+  |
+  v
+Persistence Context (1st Level Cache)
+  |
+  v
+Hibernate SQL
+  |
+  v
+Database
+*/
+
+/*
+==========================================================================================
+SAMPLE CODE — WHAT YOU WRITE vs WHAT SPRING DOES
+==========================================================================================
+*/
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+class PaymentService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Transactional
+    public void makePayment() {
+
+        // Transaction already started by Spring
+        Payment payment = new Payment();
+        payment.setId(1L);
+        payment.setAmount(1000);
+
+        // Stored in Persistence Context
+        entityManager.persist(payment);
+
+        // If exception occurs here → ROLLBACK
+    }
+}
+
+/*
+==========================================================================================
+INTERVIEW GOLD ⭐
+==========================================================================================
+• @Transactional works using Spring AOP proxies
+• EntityManager is thread-bound
+• SQL is executed at COMMIT time, not persist()
+• Persistence Context is flushed before commit
+• One EntityManager per transaction
+==========================================================================================
+*/
