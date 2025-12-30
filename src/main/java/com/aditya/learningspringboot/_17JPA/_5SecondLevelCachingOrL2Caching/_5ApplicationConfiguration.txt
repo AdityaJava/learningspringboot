@@ -1,0 +1,182 @@
+==============================
+SECTION 5: APPLICATION CONFIGURATION
+==============================
+
+8. application.properties / application.yml Configuration
+----------------------------------------------------------
+
+Hibernate Second Level Cache is enabled and wired entirely
+through configuration properties.
+
+Each property is read by a specific layer and controls
+how Hibernate boots the cache subsystem.
+
+
+-----------------------------------------------
+hibernate.cache.use_second_level_cache = true
+-----------------------------------------------
+
+Who reads it:
+- Hibernate Core
+
+Why it is required:
+- Explicitly tells Hibernate to enable L2 cache support.
+- Hibernate keeps L2 cache OFF by default to avoid
+  unexpected memory usage and stale data issues.
+
+What happens internally:
+- If true:
+    - Hibernate initializes cache regions
+    - SessionFactory wires L2 cache hooks
+- If missing or false:
+    - Hibernate COMPLETELY bypasses L2 cache
+    - @Cache annotations are ignored
+    - No cache read/write occurs
+
+
+-----------------------------------------------
+hibernate.cache.use_query_cache = true
+-----------------------------------------------
+
+Who reads it:
+- Hibernate Core
+
+Why it is required:
+- Enables Hibernate Query Cache.
+- Query cache stores:
+    - Query result IDs (NOT entity data)
+- Works together with L2 cache.
+
+Important note:
+- Query cache is OPTIONAL and separate from entity cache.
+- Entity cache can work without query cache.
+
+What happens internally:
+- If true:
+    - Hibernate caches query result sets
+    - Query cache regions are created
+- If missing or false:
+    - Queries always hit DB
+    - Even if entity L2 cache exists
+
+
+-----------------------------------------------
+hibernate.cache.region.factory_class
+-----------------------------------------------
+
+Example value:
+- org.hibernate.cache.jcache.JCacheRegionFactory
+
+Who reads it:
+- Hibernate Core (during SessionFactory bootstrap)
+
+Why it is required:
+- Tells Hibernate WHICH cache integration strategy to use.
+- Acts as the bridge factory for L2 cache regions.
+
+What happens internally:
+- Hibernate loads the RegionFactory implementation.
+- RegionFactory:
+    - Creates entity regions
+    - Creates collection regions
+    - Delegates storage to JCache
+
+If missing:
+- Hibernate does not know how to create cache regions.
+- L2 cache initialization FAILS.
+- Hibernate falls back to NO caching.
+
+
+-----------------------------------------------
+javax.cache.provider
+-----------------------------------------------
+
+Example values:
+- org.ehcache.jsr107.EhcacheCachingProvider
+- com.hazelcast.cache.HazelcastCachingProvider
+
+Who reads it:
+- JCache (JSR-107) layer
+
+Why it is required:
+- Selects the actual cache provider implementation.
+- JCache uses this to load provider via SPI.
+
+What happens internally:
+- JCache loads CachingProvider implementation.
+- CacheManager is created from provider.
+- Hibernate talks to CacheManager indirectly.
+
+If missing:
+- JCache tries auto-discovery from classpath.
+- If multiple providers exist → startup error.
+- If none found → cache initialization failure.
+
+
+-----------------------------------------------
+Cache SPI Debug Logging
+-----------------------------------------------
+
+Example:
+logging.level.org.hibernate.cache = DEBUG
+logging.level.org.hibernate.cache.spi = TRACE
+
+Who reads it:
+- Logging framework (Logback / Log4j)
+- Hibernate cache SPI layer
+
+Why it is required:
+- Helps debug cache behavior:
+    - Cache HIT / MISS
+    - Region creation
+    - Evictions
+    - Provider interactions
+
+What happens internally:
+- Enables detailed logging from:
+    - Hibernate cache engine
+    - RegionFactory
+    - Cache access strategies
+
+If missing:
+- Cache still works normally.
+- But cache behavior becomes opaque and hard to debug.
+
+
+-----------------------------------------------
+End-to-End Property Ownership Summary
+-----------------------------------------------
+
+hibernate.cache.use_second_level_cache
+→ Read by Hibernate Core
+→ Enables L2 cache engine
+
+hibernate.cache.use_query_cache
+→ Read by Hibernate Core
+→ Enables query result caching
+
+hibernate.cache.region.factory_class
+→ Read by Hibernate Core
+→ Chooses cache integration (JCache)
+
+javax.cache.provider
+→ Read by JCache
+→ Chooses actual cache provider
+
+logging.*cache*
+→ Read by logging framework
+→ Visibility into cache internals
+
+
+-----------------------------------------------
+Golden Interview Line
+-----------------------------------------------
+
+Hibernate properties decide:
+WHEN caching is enabled
+
+JCache properties decide:
+WHICH provider is used
+
+Provider decides:
+WHERE data is stored

@@ -1,0 +1,72 @@
+===============================================
+ehcache.xml (Provider Configuration Content)
+===============================================
+
+<?xml version="1.0" encoding="UTF-8"?>
+<config
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="http://www.ehcache.org/v3"
+    xsi:schemaLocation="http://www.ehcache.org/v3
+                        http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
+
+    <!-- Default cache configuration (used if region not defined) -->
+    <cache-template name="default-template">
+        <expiry>
+            <ttl unit="minutes">5</ttl>
+        </expiry>
+        <resources>
+            <heap unit="entries">1000</heap>
+        </resources>
+    </cache-template>
+
+    <!-- Entity-specific cache region -->
+    <cache alias="user-region" uses-template="default-template">
+        <expiry>
+            <ttl unit="minutes">10</ttl>
+        </expiry>
+        <resources>
+            <heap unit="entries">10000</heap>
+        </resources>
+    </cache>
+
+</config>
+
+
+================================================
+application.properties (Hibernate + JCache)
+================================================
+
+# Enable Hibernate Second Level Cache
+spring.jpa.properties.hibernate.cache.use_second_level_cache=true
+
+# (Optional) Enable Hibernate Query Cache
+spring.jpa.properties.hibernate.cache.use_query_cache=true
+
+# Tell Hibernate to use JCache integration
+spring.jpa.properties.hibernate.cache.region.factory_class=
+org.hibernate.cache.jcache.JCacheRegionFactory
+
+# Tell JCache which cache provider to use (Ehcache)
+spring.jpa.properties.javax.cache.provider=
+org.ehcache.jsr107.EhcacheCachingProvider
+
+# Tell Spring/JCache where ehcache.xml is located
+spring.cache.jcache.config=classpath:ehcache.xml
+
+# Cache debug logging (optional but recommended)
+logging.level.org.hibernate.cache=DEBUG
+logging.level.org.hibernate.cache.spi=TRACE
+
+
+================================================
+How Mapping Works (Quick Reminder)
+================================================
+
+@Entity
+@Cache(region = "user-region")
+
+Hibernate region name  →  "user-region"
+JCache cache name      →  "user-region"
+Ehcache alias          →  "user-region"
+
+ALL THREE NAMES MUST MATCH

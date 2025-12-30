@@ -1,0 +1,181 @@
+==============================
+SECTION 6: CACHE REGION DEEP DIVE
+==============================
+
+9. What is a Cache Region?
+=========================
+
+-----------------------------------------------
+Definition
+-----------------------------------------------
+
+A Cache Region is a logical, named storage area
+inside Hibernate Second Level Cache.
+
+Each region:
+- Belongs to a specific entity, collection, or query
+- Is backed by a physical cache from the provider
+- Has its own configuration and lifecycle
+
+
+-----------------------------------------------
+Region per Entity / Collection
+-----------------------------------------------
+
+Hibernate creates separate regions for:
+
+1. Entity Regions
+   - One region per cache-enabled entity
+   - Stores entity state by entity identifier
+
+2. Collection Regions
+   - One region per cache-enabled collection
+   - Stores association data (e.g. User.roles)
+
+3. Query Regions
+   - Stores query result identifiers
+   - Works together with entity regions
+
+Key point:
+- Entity and collection caches are isolated
+- Clearing one region does NOT affect others
+
+
+-----------------------------------------------
+Region Lifecycle
+-----------------------------------------------
+
+Creation:
+- Happens during SessionFactory startup
+- Triggered when Hibernate scans @Cache annotations
+- Region is registered with RegionFactory
+
+Active State:
+- Region is accessed during:
+    - entity load
+    - entity update
+    - cache eviction
+
+Destruction:
+- Happens when SessionFactory is closed
+- All regions are destroyed
+- Cache memory is released
+
+
+-----------------------------------------------
+Region Isolation
+-----------------------------------------------
+
+Isolation means:
+- Data in one region is invisible to another region
+- Eviction rules apply per region
+- TTL / size limits are region-specific
+
+Benefits:
+- Prevents one entity cache from polluting others
+- Enables fine-grained tuning
+- Safer cache eviction
+
+
+================================================
+10. Region Properties
+================================================
+
+-----------------------------------------------
+Eviction Policy
+-----------------------------------------------
+
+Definition:
+- Strategy used to remove entries when cache is full.
+
+Common policies:
+- LRU (Least Recently Used)
+- LFU (Least Frequently Used)
+- FIFO (First In First Out)
+
+Why needed:
+- Prevents uncontrolled memory growth
+- Keeps hot data in cache
+
+
+-----------------------------------------------
+TTL / TTI
+-----------------------------------------------
+
+TTL (Time To Live):
+- Entry expires after fixed time since creation.
+
+TTI (Time To Idle):
+- Entry expires if not accessed for a time period.
+
+Why needed:
+- Prevents stale data
+- Controls cache freshness
+
+
+-----------------------------------------------
+Max Heap Entries
+-----------------------------------------------
+
+Definition:
+- Maximum number of entries allowed in heap memory.
+
+Why needed:
+- Prevents OutOfMemoryError
+- Controls memory footprint
+
+Behavior:
+- When limit reached → eviction policy triggers
+
+
+-----------------------------------------------
+Concurrency Behavior
+-----------------------------------------------
+
+Definition:
+- How cache handles simultaneous access.
+
+Controlled by:
+- CacheConcurrencyStrategy (Hibernate)
+- Provider’s internal locking
+
+Examples:
+- READ_ONLY → no locking
+- READ_WRITE → strict locking
+- NONSTRICT_READ_WRITE → relaxed consistency
+
+
+-----------------------------------------------
+Thread Safety
+-----------------------------------------------
+
+Definition:
+- Ability to handle concurrent access safely.
+
+Key points:
+- L2 cache is accessed by multiple threads
+- Providers implement thread-safe data structures
+- Hibernate assumes provider is thread-safe
+
+Without thread safety:
+- Data corruption
+- Inconsistent cache reads
+
+
+-----------------------------------------------
+Interview-Ready Summary
+-----------------------------------------------
+
+Region
+→ Logical namespace inside L2 cache
+
+Each region has:
+→ Independent lifecycle
+→ Independent eviction rules
+→ Independent concurrency behavior
+
+Hibernate:
+→ Decides region usage
+
+Cache Provider:
+→ Enforces eviction, TTL, thread safety

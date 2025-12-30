@@ -1,0 +1,210 @@
+==============================
+12. Cache Concurrency Strategies
+==============================
+
+Cache Concurrency Strategy defines
+HOW Hibernate keeps L2 cache data consistent
+when multiple transactions and threads access it.
+
+It is configured using:
+@Cache(usage = CacheConcurrencyStrategy.XYZ)
+
+
+-----------------------------------------------
+1. READ_ONLY
+-----------------------------------------------
+
+Meaning:
+- Cached data is IMMUTABLE.
+- Entity state NEVER changes after creation.
+
+Behavior:
+- No locking
+- No cache updates
+- No cache invalidation
+
+Flow:
+- First GET → DB → L2 cache
+- Subsequent GETs → L2 cache
+- UPDATE operation → EXCEPTION
+
+Why it is fastest:
+- No synchronization
+- No write overhead
+- Pure read performance
+
+When to use:
+- Reference data
+- Lookup tables
+- Master data that never changes
+
+Example use cases:
+- Country
+- Currency
+- Static configuration entities
+
+Risk:
+- If entity is updated accidentally → runtime exception
+
+Interview line:
+"READ_ONLY is the fastest but safest only for immutable data."
+
+
+-----------------------------------------------
+2. READ_WRITE (RECOMMENDED)
+-----------------------------------------------
+
+Meaning:
+- Entity data CAN change.
+- Hibernate must ensure STRONG consistency.
+
+Behavior:
+- Uses soft locks
+- Cache entries are locked during updates
+- Cache updated AFTER transaction commit
+
+Flow:
+1. Transaction starts
+2. Cache entry is soft-locked
+3. DB update happens
+4. Transaction commits
+5. Cache entry is updated & unlocked
+
+Consistency:
+- Strong consistency
+- Cache always reflects committed DB state
+
+Performance:
+- Slower than READ_ONLY
+- Locking and version checks involved
+
+Requirements:
+- Entity MUST have @Version field
+- Version used to detect stale updates
+
+When to use:
+- Frequently read
+- Occasionally updated entities
+
+Example use cases:
+- User profile
+- Account details
+
+Interview line:
+"READ_WRITE guarantees consistency using locking and versioning."
+
+
+-----------------------------------------------
+3. NONSTRICT_READ_WRITE
+-----------------------------------------------
+
+Meaning:
+- Entity data CAN change.
+- Hibernate allows TEMPORARY inconsistency.
+
+Behavior:
+- NO locking
+- Cache is EVICTED on update
+- Cache is repopulated on next read
+
+Flow:
+1. Transaction updates DB
+2. Hibernate evicts cache entry
+3. Next GET:
+   - Cache MISS
+   - DB HIT
+   - Cache repopulated
+
+Consistency:
+- Eventual consistency
+- Small window where stale data may exist
+
+Performance:
+- Faster than READ_WRITE
+- Slower than READ_ONLY
+
+When to use:
+- Data changes occasionally
+- Small stale data window acceptable
+
+Example use cases:
+- Product catalog
+- Non-critical master data
+
+Interview line:
+"NONSTRICT_READ_WRITE trades consistency for performance."
+
+
+-----------------------------------------------
+4. TRANSACTIONAL
+-----------------------------------------------
+
+Meaning:
+- Cache operations participate in JTA transactions.
+- Cache behaves like a transactional resource.
+
+Behavior:
+- Cache updates are committed or rolled back
+  together with DB transaction.
+- Requires transactional cache provider.
+
+Consistency:
+- STRONG consistency
+- Cache and DB always in sync
+
+Requirements:
+- JTA Transaction Manager
+- Transactional cache provider (e.g. Hazelcast)
+- Not supported by all providers
+
+Performance:
+- Slowest
+- High overhead due to XA / transaction coordination
+
+When to use:
+- Distributed systems
+- Strict ACID requirements
+
+Example use cases:
+- Financial systems
+- Distributed clustered caches
+
+Interview line:
+"TRANSACTIONAL makes cache part of the transaction."
+
+
+-----------------------------------------------
+Comparison Summary
+-----------------------------------------------
+
+READ_ONLY
+- Fastest
+- Immutable data
+- No updates allowed
+
+READ_WRITE
+- Strong consistency
+- Locking + versioning
+- Moderate performance
+
+NONSTRICT_READ_WRITE
+- Eventual consistency
+- No locking
+- Better performance
+
+TRANSACTIONAL
+- Full ACID consistency
+- JTA + transactional cache
+- Lowest performance
+
+
+-----------------------------------------------
+Golden Interview Rule
+-----------------------------------------------
+
+Choose strategy based on:
+- Data mutability
+- Consistency requirement
+- Performance needs
+
+There is NO single best strategy.

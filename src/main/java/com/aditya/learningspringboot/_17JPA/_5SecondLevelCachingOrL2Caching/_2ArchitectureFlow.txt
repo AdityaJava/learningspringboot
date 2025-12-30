@@ -1,0 +1,146 @@
+==============================
+SECTION 2: ARCHITECTURE FLOW
+==============================
+
+4. Hibernate L2 Cache Architecture (End-to-End)
+-----------------------------------------------
+
+Big Picture:
+Hibernate does NOT talk directly to cache implementations like Ehcache or Caffeine.
+Instead, it uses a layered abstraction model to remain vendor-independent.
+
+Architecture Flow (Top to Bottom):
+
+Hibernate Core
+   ↓
+hibernate-jcache module
+   ↓
+JCache (JSR-107) Interfaces
+   ↓
+Cache Provider SPI
+   ↓
+Actual Cache Implementation (Ehcache / Caffeine / Hazelcast)
+
+
+-----------------------------------------------
+1. Hibernate Core
+-----------------------------------------------
+
+- Hibernate Core is the ORM engine.
+- It knows WHEN to cache and WHEN to read/write entities.
+- Hibernate Core does NOT know:
+    - How data is stored in cache
+    - Which cache provider is used
+
+Responsibilities:
+- Decide cache lifecycle events:
+    - put entity into cache
+    - read entity from cache
+    - evict / invalidate cache
+- Trigger caching logic only if L2 cache is enabled
+- Delegate cache operations to a cache abstraction layer
+
+
+-----------------------------------------------
+2. hibernate-jcache Module
+-----------------------------------------------
+
+- This is the bridge between Hibernate and JCache.
+- Hibernate Core talks to hibernate-jcache, NOT directly to providers.
+- It adapts Hibernate’s internal cache calls into JCache-compatible calls.
+
+Why this layer exists:
+- Hibernate should not depend on vendor-specific APIs.
+- JCache is a standard → write once, switch providers easily.
+
+Example responsibility:
+- Convert Hibernate entity region → JCache Cache
+- Convert Hibernate cache operations → JCache API calls
+
+
+-----------------------------------------------
+3. JCache (JSR-107) APIs
+-----------------------------------------------
+
+- JCache is a standard caching specification for Java.
+- Defines only interfaces, not implementations.
+
+Important Interfaces:
+- CacheManager
+- Cache
+- CachingProvider
+- Configuration
+
+Key point:
+- JCache defines WHAT operations exist
+- It does NOT define HOW data is stored
+
+Hibernate uses:
+- CacheManager to locate caches
+- Cache to put/get entities
+- Regions are mapped to cache names
+
+
+-----------------------------------------------
+4. Cache Provider SPI
+-----------------------------------------------
+
+- Service Provider Interface (SPI) used to plug implementations.
+- Cache providers implement JCache interfaces.
+- Selected at runtime via configuration / classpath.
+
+Why SPI:
+- Loose coupling
+- Replace cache providers without changing Hibernate code
+
+
+-----------------------------------------------
+5. Actual Cache Implementations
+-----------------------------------------------
+
+Ehcache:
+- Popular Hibernate-friendly cache
+- Supports heap, off-heap, disk
+- Suitable for enterprise applications
+
+Caffeine:
+- High-performance in-memory cache
+- Pure JVM heap based
+- Very fast, non-distributed
+
+Hazelcast:
+- Distributed cache
+- Data shared across multiple JVMs
+- Suitable for clustered / microservice environments
+
+
+-----------------------------------------------
+End-to-End Runtime Flow
+-----------------------------------------------
+
+1. Application calls entityManager.find()
+2. Hibernate Core checks:
+   - L1 cache
+   - L2 cache enabled?
+3. Hibernate Core delegates cache call to hibernate-jcache
+4. hibernate-jcache uses JCache APIs
+5. JCache routes call to provider SPI
+6. Provider implementation (Ehcache/Caffeine/Hazelcast) executes:
+   - get / put / evict
+7. Entity returned back to Hibernate
+8. Entity placed into Persistence Context (L1 cache)
+
+
+-----------------------------------------------
+Key Takeaway
+-----------------------------------------------
+
+Hibernate → decides WHEN to cache
+JCache     → defines HOW to interact
+Provider   → decides WHERE & HOW data is stored
+
+This layered design makes Hibernate caching:
+- Flexible
+- Pluggable
+- Vendor-independent
+

@@ -1,0 +1,188 @@
+==============================
+SECTION 4: ENTITY-LEVEL CONFIGURATION
+==============================
+
+6. Enabling Cache on Entity
+==========================
+
+-----------------------------------------------
+@Cacheable vs Hibernate @Cache
+-----------------------------------------------
+
+@Cacheable (Spring Cache):
+- Part of Spring Cache abstraction.
+- Applied on methods (service/repository layer).
+- Caches method return values.
+- NOT aware of Hibernate internals.
+- Does NOT participate in Hibernate L2 cache.
+
+Hibernate @Cache:
+- Part of Hibernate ORM.
+- Applied on Entity / Collection.
+- Directly enables Hibernate Second Level Cache.
+- Works at ORM level, not method level.
+
+Key Difference:
+- @Cacheable → Method result caching
+- @Cache (Hibernate) → Entity state caching
+
+
+-----------------------------------------------
+@Cache(usage = ?, region = ?)
+-----------------------------------------------
+
+Syntax:
+@Cache(
+   usage = CacheConcurrencyStrategy.READ_ONLY / READ_WRITE / NONSTRICT_READ_WRITE,
+   region = "region-name"
+)
+
+usage:
+- Defines concurrency strategy.
+- Controls consistency vs performance tradeoff.
+
+Common strategies:
+- READ_ONLY
+  - Best performance
+  - Entity must NEVER change
+
+- READ_WRITE
+  - Safe for updates
+  - Slight performance overhead
+
+- NONSTRICT_READ_WRITE
+  - Eventual consistency
+  - Better performance than READ_WRITE
+
+
+-----------------------------------------------
+What is a Cache Region?
+-----------------------------------------------
+
+Definition:
+- A cache region is a logical namespace inside the L2 cache.
+- Each region maps to a dedicated cache entry space.
+
+Think of region as:
+- A named bucket inside L2 cache
+- Where Hibernate stores entity data
+
+Example:
+- Region: "user-region"
+- Stores all User entity cache entries
+
+
+-----------------------------------------------
+Why Cache Region is Needed?
+-----------------------------------------------
+
+Reasons:
+1. Logical separation
+   - Different entities can have different cache rules.
+
+2. Configuration granularity
+   - TTL, eviction, size can differ per region.
+
+3. Selective eviction
+   - Clear only one entity’s cache, not entire L2 cache.
+
+4. Monitoring & tuning
+   - Helps analyze cache usage per entity.
+
+
+-----------------------------------------------
+Default Region Naming Strategy
+-----------------------------------------------
+
+If region is NOT explicitly specified:
+- Hibernate uses the fully qualified entity class name.
+
+Example:
+Entity: com.example.entity.User
+
+Default Region:
+- com.example.entity.User
+
+Important:
+- Explicit region naming is recommended for clarity and control.
+
+
+================================================
+7. User Entity Example
+================================================
+
+-----------------------------------------------
+Annotated Entity with L2 Cache
+-----------------------------------------------
+
+@Entity
+@Table(name = "users")
+@Cache(
+   usage = CacheConcurrencyStrategy.READ_WRITE,
+   region = "user-region"
+)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private String email;
+}
+
+
+-----------------------------------------------
+Region Name Usage
+-----------------------------------------------
+
+Region name:
+- "user-region"
+
+Meaning:
+- Hibernate will store User entity cache entries
+  inside the "user-region" cache.
+
+Physical storage:
+- Backed by cache provider (Ehcache / Caffeine / Hazelcast)
+- Accessed via JCache APIs
+
+
+-----------------------------------------------
+How Hibernate Maps Entity → Region
+-----------------------------------------------
+
+At startup:
+1. Hibernate scans entities.
+2. Detects @Cache annotation.
+3. Registers region name with SessionFactory.
+
+At runtime (GET call):
+1. Check L1 cache (Persistence Context)
+2. Check L2 cache region "user-region"
+3. If HIT:
+   - Load entity from region
+   - Put into Persistence Context
+4. If MISS:
+   - Fetch from DB
+   - Put into:
+       a) Persistence Context
+       b) "user-region" L2 cache
+
+
+-----------------------------------------------
+Interview-Friendly Summary
+-----------------------------------------------
+
+@Entity + @Cache
+→ Enables Hibernate L2 cache
+
+Region
+→ Logical namespace inside L2 cache
+
+Explicit region name
+→ Better control, tuning, eviction
+
+@Cacheable ≠ Hibernate @Cache
+→ Different layers, different purposes

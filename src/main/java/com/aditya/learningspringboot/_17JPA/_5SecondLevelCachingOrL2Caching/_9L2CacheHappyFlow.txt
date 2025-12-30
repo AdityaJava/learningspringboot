@@ -1,0 +1,137 @@
+==============================
+13. Happy Flow Example (L2 Cache)
+==============================
+
+Scenario:
+- User entity is L2 cache enabled
+- Cache strategy: READ_WRITE
+- Cache region: "user-region"
+- Each GET is done in a NEW transaction / session
+
+
+-----------------------------------------------
+STEP 0: Application Startup
+-----------------------------------------------
+
+1. Spring Boot starts
+2. Hibernate builds SessionFactory
+3. L2 cache is enabled
+4. Cache region "user-region" is created
+5. Cache is EMPTY at this point
+
+
+-----------------------------------------------
+STEP 1: CREATE User
+-----------------------------------------------
+
+Application → save(User)
+
+Flow:
+1. New Hibernate Session (Session-1)
+2. EntityManager.persist(User)
+3. User is stored in:
+   - Persistence Context (L1 cache)
+4. Hibernate executes:
+   - INSERT INTO users ...
+5. Transaction COMMIT
+6. Session-1 CLOSED
+
+Important:
+- L2 cache is NOT populated on save()
+- Cache remains EMPTY
+
+Reason:
+- Hibernate avoids caching during writes
+- Prevents stale / uncommitted data
+
+
+-----------------------------------------------
+STEP 2: GET User (1st time)
+-----------------------------------------------
+
+Application → find(User, id)
+
+Flow:
+1. New Hibernate Session (Session-2)
+2. Check Persistence Context (L1) → MISS
+3. Check L2 Cache ("user-region") → MISS
+4. Hit DATABASE
+   - SELECT * FROM users WHERE id = ?
+5. Entity loaded into:
+   a) Persistence Context (L1 cache)
+   b) L2 Cache ("user-region")
+6. Entity returned to application
+7. Session-2 CLOSED
+
+Result:
+- DB HIT = YES
+- L2 cache POPULATED
+
+
+-----------------------------------------------
+STEP 3: GET User (2nd time)
+-----------------------------------------------
+
+Application → find(User, id)
+
+Flow:
+1. New Hibernate Session (Session-3)
+2. Check Persistence Context (L1) → MISS
+3. Check L2 Cache ("user-region") → HIT
+4. Entity loaded from L2 cache
+5. Entity placed into Persistence Context
+6. NO database call
+7. Entity returned to application
+8. Session-3 CLOSED
+
+Result:
+- DB HIT = NO
+- Served from L2 cache
+
+
+-----------------------------------------------
+Visual Logical Flow
+-----------------------------------------------
+
+CREATE:
+App
+ ↓
+Hibernate
+ ↓
+DB
+(L2 cache NOT used)
+
+
+GET (1st time):
+App
+ ↓
+L1 Cache (MISS)
+ ↓
+L2 Cache (MISS)
+ ↓
+DB
+ ↓
+L1 Cache + L2 Cache
+
+
+GET (2nd time):
+App
+ ↓
+L1 Cache (MISS)
+ ↓
+L2 Cache (HIT)
+ ↓
+L1 Cache
+ ↓
+Return Entity
+
+
+-----------------------------------------------
+Key Takeaways (Interview Ready)
+-----------------------------------------------
+
+- L1 cache is SESSION scoped
+- L2 cache is SESSIONFACTORY scoped
+- save() does NOT populate L2 cache
+- First GET populates L2 cache
+- Subsequent GETs avoid DB completely

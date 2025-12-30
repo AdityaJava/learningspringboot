@@ -1,0 +1,122 @@
+==============================
+SECTION 11: SUMMARY & INTERVIEW POINTS
+==============================
+
+16. Key Interview Takeaways
+==========================
+
+-----------------------------------------------
+When to Use Second Level Cache (L2 Cache)
+-----------------------------------------------
+
+Use L2 cache when:
+- Application is READ-HEAVY
+- Same entities are read repeatedly
+- Data changes INFREQUENTLY
+- Reducing DB load is critical
+- Multiple sessions access same data
+
+Best-fit examples:
+- Master / reference data
+- User profile reads
+- Product catalogs
+- Configuration entities
+
+
+-----------------------------------------------
+When NOT to Use L2 Cache
+-----------------------------------------------
+
+Avoid L2 cache when:
+- Data changes VERY frequently
+- Strong real-time consistency is required
+- Large result sets with low reuse
+- Write-heavy workloads
+- Memory constraints are tight
+
+Bad-fit examples:
+- Audit logs
+- Transaction tables
+- Real-time counters
+- Highly volatile data
+
+
+-----------------------------------------------
+Common Misconceptions
+-----------------------------------------------
+
+❌ L2 cache is enabled by default
+✔ FALSE → Must be explicitly enabled
+
+❌ save() populates L2 cache
+✔ FALSE → First GET populates L2 cache
+
+❌ @Cacheable enables Hibernate L2 cache
+✔ FALSE → It is Spring method-level cache
+
+❌ Query cache stores entity data
+✔ FALSE → It stores only entity IDs
+
+
+-----------------------------------------------
+Save vs Get Behavior
+-----------------------------------------------
+
+save() / persist():
+- Writes entity to DB
+- Stores entity in L1 cache only
+- DOES NOT populate L2 cache
+
+get() / find():
+- First GET:
+  - DB HIT
+  - Populates L1 + L2 cache
+- Subsequent GETs:
+  - Served from L2 cache
+  - No DB hit
+
+
+-----------------------------------------------
+L1 + L2 Cache Interaction
+-----------------------------------------------
+
+L1 Cache (Persistence Context):
+- Session scoped
+- Mandatory
+- Always checked FIRST
+
+L2 Cache:
+- SessionFactory scoped
+- Optional
+- Checked only after L1 MISS
+
+Lookup Order:
+Application
+ ↓
+L1 Cache
+ ↓
+L2 Cache
+ ↓
+Database
+
+
+-----------------------------------------------
+Golden Interview Lines
+-----------------------------------------------
+
+"L1 cache is mandatory and session-scoped;
+ L2 cache is optional and SessionFactory-scoped."
+
+"save() never populates L2 cache;
+ first get() does."
+
+"Hibernate decides WHEN to cache;
+ JCache defines HOW;
+ provider decides WHERE."
+
+-----------------------------------------------
+Final One-Liner
+-----------------------------------------------
+
+L2 Cache is a PERFORMANCE optimization,
+NOT a consistency mechanism.

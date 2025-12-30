@@ -1,0 +1,93 @@
+==============================
+SECTION 1: CORE THEORY
+==============================
+
+1. What is Second Level Cache (L2 Cache) in Hibernate?
+----------------------------------------------------
+
+Definition:
+- Second Level Cache (L2 Cache) is a shared cache mechanism in Hibernate
+  that stores entity data beyond the scope of a single Session / EntityManager.
+- It sits between the application and the database and reduces repetitive DB hits.
+
+Purpose:
+- Avoid hitting the database again and again for the same entity data.
+- Improve performance by serving entity data from memory instead of DB.
+- Useful especially for read-heavy applications.
+
+Difference between First Level Cache vs Second Level Cache:
+
+First Level Cache (L1):
+- Scope: Session / EntityManager
+- Enabled by default
+- Cannot be shared across sessions
+- Cleared when session is closed
+
+Second Level Cache (L2):
+- Scope: SessionFactory
+- Explicitly enabled
+- Shared across all sessions
+- Lives as long as SessionFactory lives
+
+Scope (Session vs SessionFactory):
+- L1 cache belongs to a single Session / EntityManager.
+- L2 cache belongs to the SessionFactory.
+- Since SessionFactory is a singleton per persistence unit,
+  L2 cache becomes globally accessible to all sessions.
+
+Why L2 cache is shared across sessions:
+- SessionFactory is created once at application startup.
+- L2 cache is attached to SessionFactory.
+- All EntityManagers created from that SessionFactory
+  can access the same L2 cache data.
+
+
+2. Is Second Level Cache In-Memory?
+----------------------------------
+
+JVM memory usage:
+- Yes, L2 cache is in-memory and lives inside JVM memory.
+- Cached entities are stored as serialized/deserialized objects.
+
+Heap vs off-heap (brief):
+- By default, most L2 cache providers store data in JVM Heap.
+- Some providers support off-heap or disk-based storage,
+  but conceptually L2 cache is still considered in-memory caching.
+
+Why L2 cache survives across multiple EntityManager / Session objects:
+- EntityManager objects are short-lived (per request).
+- L2 cache is tied to SessionFactory, not EntityManager.
+- As long as SessionFactory is alive, L2 cache remains available.
+
+
+3. When does L2 Cache come into picture?
+---------------------------------------
+
+Why L2 cache is populated ONLY after first GET call:
+- L2 cache is populated when Hibernate loads data from DB.
+- The first time you call find()/get(), Hibernate:
+    DB → Entity → Persistence Context → L2 Cache
+- Only after fetching from DB does Hibernate know what to cache.
+
+Why save() does not directly populate L2 cache:
+- save() / persist() stores data into DB and L1 cache.
+- Hibernate avoids pushing directly into L2 cache during write
+  to prevent stale or inconsistent data.
+- L2 cache is primarily optimized for read operations.
+
+Flow: DB → Persistence Context → L2 Cache
+
+Detailed Flow:
+1. First GET call:
+   - Check L1 cache → MISS
+   - Check L2 cache → MISS
+   - Hit Database
+   - Put entity into:
+       a) Persistence Context (L1 cache)
+       b) Second Level Cache
+
+2. Second GET call (new session):
+   - Check L1 cache → MISS
+   - Check L2 cache → HIT
+   - No DB call
+   - Entity loaded into Persistence Context from L2 cache

@@ -1,0 +1,158 @@
+==============================
+SECTION 10: UPDATE & INVALIDATION
+==============================
+
+14. Update Lifecycle (L2 Cache)
+==============================
+
+Scenario:
+- Entity is L2 cache enabled
+- Cache region: "user-region"
+- Update happens inside a transaction
+
+
+-----------------------------------------------
+STEP 1: Entity Update Starts
+-----------------------------------------------
+
+1. Application opens Transaction
+2. New Hibernate Session (Session-X)
+3. Entity is loaded into Persistence Context (L1 cache)
+4. Entity state is MODIFIED
+
+
+-----------------------------------------------
+STEP 2: Cache Interaction During Update
+-----------------------------------------------
+
+Hibernate behavior:
+- Hibernate NEVER updates L2 cache immediately
+- Cache action depends on concurrency strategy
+
+
+-----------------------------------------------
+STEP 3: Transaction Commit Effect
+-----------------------------------------------
+
+On COMMIT:
+- Hibernate synchronizes DB first
+- Cache action happens AFTER successful commit
+- If transaction ROLLBACKS:
+  - L2 cache is NOT updated
+
+
+-----------------------------------------------
+Concurrency Strategy Behavior (UPDATE)
+-----------------------------------------------
+
+READ_ONLY:
+- Updates are NOT allowed
+- Attempted update throws Exception
+- Cache entry remains unchanged
+
+READ_WRITE:
+- Cache entry is SOFT-LOCKED
+- DB is updated
+- On commit:
+  - Cache entry is UPDATED
+  - Lock is released
+- Guarantees strong consistency
+
+NONSTRICT_READ_WRITE:
+- No locking
+- DB is updated
+- Cache entry is EVICTED
+- Next GET repopulates cache
+- Allows short stale window
+
+TRANSACTIONAL:
+- Cache update participates in transaction
+- Cache commit/rollback tied to DB
+- Strongest consistency
+- Requires transactional cache provider
+
+
+-----------------------------------------------
+STEP 4: Region Eviction (if triggered)
+-----------------------------------------------
+
+Triggers:
+- Manual eviction
+- Bulk updates
+- NONSTRICT strategy eviction
+
+Behavior:
+- Entire region may be cleared
+- All cached entities removed
+- Next GET causes DB HIT
+
+
+================================================
+15. Delete Lifecycle (L2 Cache)
+================================================
+
+-----------------------------------------------
+STEP 1: Entity Delete
+-----------------------------------------------
+
+1. Application deletes entity
+2. Hibernate issues:
+   - DELETE FROM table WHERE id = ?
+3. Transaction is still OPEN
+
+
+-----------------------------------------------
+STEP 2: Cache Eviction
+-----------------------------------------------
+
+On COMMIT:
+- Hibernate removes cache entry
+- Entity ID is evicted from region
+- Region remains consistent
+
+Behavior:
+- L2 cache will NEVER return deleted entity
+- Prevents stale reads
+
+
+-----------------------------------------------
+Region Consistency
+-----------------------------------------------
+
+Guarantees:
+- Deleted entity cache entry is removed
+- Region stays consistent with DB
+
+Bulk Deletes:
+- Hibernate evicts ENTIRE region
+- Safer than selective eviction
+
+
+-----------------------------------------------
+Visual Summary
+-----------------------------------------------
+
+UPDATE:
+DB update
+ ↓
+Transaction commit
+ ↓
+Cache update OR eviction (strategy dependent)
+
+DELETE:
+DB delete
+ ↓
+Transaction commit
+ ↓
+Cache eviction
+
+
+-----------------------------------------------
+Interview-Grade Takeaways
+-----------------------------------------------
+
+- L2 cache is updated ONLY after commit
+- Rollback = no cache change
+- Strategy defines cache behavior
+- Deletes always evict cache entries
+- Region-level eviction keeps consistency

@@ -1,0 +1,172 @@
+==============================
+SECTION 3: DEPENDENCIES (POM)
+==============================
+
+5. Maven Dependencies for L2 Cache in Spring Boot
+------------------------------------------------
+
+To enable Hibernate Second Level Cache in a Spring Boot application,
+we need a combination of Spring, Hibernate, JCache abstraction,
+and a concrete cache provider.
+
+
+-----------------------------------------------
+1. spring-boot-starter-data-jpa
+-----------------------------------------------
+
+Why it is needed:
+- Provides Spring Data JPA integration.
+- Auto-configures:
+    - EntityManagerFactory
+    - DataSource
+    - TransactionManager
+    - Hibernate as JPA provider
+
+Who uses it:
+- Used by Spring Boot
+- Internally boots Hibernate ORM
+- Acts as the foundation layer for JPA + Hibernate
+
+Key point:
+- Without this dependency, Hibernate itself will not be available.
+- L2 cache cannot exist without Hibernate ORM.
+
+
+-----------------------------------------------
+2. hibernate-jcache
+-----------------------------------------------
+
+Why it is needed:
+- Hibernate does NOT talk directly to cache providers.
+- This module acts as a bridge between:
+    Hibernate ↔ JCache APIs
+
+What it provides:
+- JCacheRegionFactory
+- Region mapping between Hibernate and JCache
+- Integration glue for L2 cache
+
+Who uses it:
+- Used by Hibernate Core
+- NOT used directly by Spring
+
+Key point:
+- Mandatory when using JCache-based L2 cache.
+- Without this, Hibernate cannot use JCache providers.
+
+
+-----------------------------------------------
+3. JCache API (javax.cache / jakarta.cache)
+-----------------------------------------------
+
+Why it is needed:
+- JCache (JSR-107) is a standard caching specification.
+- Defines common caching interfaces.
+
+What it provides:
+- Cache
+- CacheManager
+- CachingProvider
+- Configuration
+
+Who uses it:
+- Used by Hibernate (via hibernate-jcache)
+- Implemented by cache providers (Ehcache, Hazelcast, etc.)
+
+Important note:
+- JCache is only interfaces.
+- No actual caching happens here.
+
+Key point:
+- Enables vendor independence.
+- Allows switching cache providers without code changes.
+
+
+-----------------------------------------------
+4. Cache Provider Dependency
+-----------------------------------------------
+
+Why it is needed:
+- Actual implementation of caching logic.
+- Responsible for storing data in memory / off-heap / distributed storage.
+
+Who uses it:
+- Used by JCache SPI
+- Indirectly used by Hibernate via JCache
+
+-----------------------------------------------
+4.1 Ehcache
+-----------------------------------------------
+
+Why Ehcache:
+- Mature and Hibernate-friendly cache provider.
+- Supports heap, off-heap, disk persistence.
+
+Who uses it:
+- Implements JCache interfaces
+- Invoked via JCache by Hibernate
+
+Typical usage:
+- Monolith applications
+- Enterprise-grade caching
+
+
+-----------------------------------------------
+4.2 Caffeine
+-----------------------------------------------
+
+Why Caffeine:
+- Extremely fast in-memory cache.
+- Simple and lightweight.
+
+Who uses it:
+- Implements JCache (via adapter)
+- Used via JCache APIs
+
+Typical usage:
+- High-performance, non-distributed caching
+- JVM-local caching only
+
+
+-----------------------------------------------
+4.3 Hazelcast
+-----------------------------------------------
+
+Why Hazelcast:
+- Distributed cache across multiple JVMs.
+- Supports clustering and horizontal scaling.
+
+Who uses it:
+- Implements JCache interfaces
+- Used by Hibernate through JCache
+
+Typical usage:
+- Microservices
+- Clustered applications
+
+
+-----------------------------------------------
+Dependency Responsibility Summary
+-----------------------------------------------
+
+spring-boot-starter-data-jpa
+→ Brings Hibernate & JPA infrastructure
+
+hibernate-jcache
+→ Connects Hibernate to JCache
+
+JCache API
+→ Standard cache interfaces (WHAT to do)
+
+Cache Provider
+→ Actual cache storage (HOW & WHERE)
+
+
+-----------------------------------------------
+Golden Rule (Interview-Friendly)
+-----------------------------------------------
+
+Hibernate decides WHEN to cache
+JCache defines HOW to cache
+Provider decides WHERE data lives
+Spring Boot wires everything together
