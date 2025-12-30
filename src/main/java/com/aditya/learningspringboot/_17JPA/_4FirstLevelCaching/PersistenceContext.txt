@@ -1,0 +1,167 @@
+================================================================================
+1. FIRST LEVEL CACHE / PERSISTENCE CONTEXT – THEORY
+================================================================================
+
+▶ What is First Level Cache?
+- First Level Cache is the cache associated with a Persistence Context.
+- It is enabled by DEFAULT in JPA / Hibernate.
+- It exists for the lifetime of an EntityManager.
+- It stores managed entity objects in memory.
+
+▶ What is Persistence Context?
+- Persistence Context is a memory space where JPA manages entity instances.
+- It acts as:
+    - First Level Cache
+    - Identity Map
+    - Change Tracking mechanism
+
+▶ Key Characteristics:
+- One Persistence Context = One EntityManager
+- Same entity fetched twice by ID → SAME object reference
+- No duplicate SQL query for same entity within same EntityManager
+- Automatically flushed to DB on:
+    - Transaction commit
+    - flush() call
+
+▶ Why it exists?
+- Improves performance (avoids repeated DB calls)
+- Ensures entity identity consistency
+- Enables dirty checking (automatic update)
+
+▶ Example behavior:
+- save(entity)
+- get(entity)
+- NO extra SELECT because entity already exists in Persistence Context
+
+================================================================================
+2. StatefulPersistenceContext.java – CONCEPTUAL VIEW
+================================================================================
+
+▶ Hibernate internal implementation:
+- Hibernate implements Persistence Context via StatefulPersistenceContext
+- This class internally holds maps like:
+
+    - Map<EntityKey, Entity>
+    - Map<EntityKey, EntityEntry>
+
+▶ Conceptual (simplified) structure:
+
+class StatefulPersistenceContext {
+
+    // Acts as First Level Cache
+    Map<EntityKey, Object> entitiesByKey;
+
+    // Tracks entity state (MANAGED, REMOVED, etc.)
+    Map<EntityKey, EntityEntry> entityEntries;
+
+    Object getEntity(EntityKey key) {
+        return entitiesByKey.get(key);
+    }
+
+    void addEntity(EntityKey key, Object entity) {
+        entitiesByKey.put(key, entity);
+    }
+}
+
+▶ Important:
+- You never interact with this class directly
+- EntityManager delegates all caching logic to this internally
+
+================================================================================
+3. EXAMPLE – SAVE THEN GET (FIRST LEVEL CACHE IN ACTION)
+================================================================================
+
+▶ Scenario:
+- Save a User
+- Immediately fetch it again in SAME transaction
+
+@Transactional
+public void demoFirstLevelCache(EntityManager em) {
+
+    User user = new User();
+    user.setId(1L);
+    user.setName("Aditya");
+
+    // INSERT happens here
+    em.persist(user);
+
+    // NO SELECT QUERY – fetched from Persistence Context
+    User u1 = em.find(User.class, 1L);
+
+    // Same object reference
+    System.out.println(user == u1); // true
+}
+
+▶ What happened internally:
+- persist() → entity stored in Persistence Context
+- find() → Hibernate checks First Level Cache first
+- DB is NOT hit again
+
+▶ SQL Behavior:
+- INSERT → YES
+- SELECT → NO
+
+================================================================================
+4. ENTITYMANAGER PER HTTP REQUEST (SPRING MVC FLOW)
+================================================================================
+
+▶ Common assumption:
+- Each HTTP request has one EntityManager (when using OpenEntityManagerInView)
+
+▶ How it works:
+- Spring opens EntityManager at request start
+- Binds it to current thread
+- Closes it after request completion
+
+▶ Where it happens:
+- OpenEntityManagerInViewFilter
+- OR OpenEntityManagerInViewInterceptor
+
+▶ DispatcherServlet flow (simplified):
+
+HTTP Request
+   ↓
+OpenEntityManagerInViewFilter
+   ↓
+DispatcherServlet
+   ↓
+Controller
+   ↓
+Service (@Transactional)
+   ↓
+Repository
+   ↓
+HTTP Response
+   ↓
+EntityManager Closed
+
+▶ Verifying via preHandle (conceptual):
+
+public boolean preHandle(HttpServletRequest request,
+                         HttpServletResponse response,
+                         Object handler) {
+
+    EntityManager em = EntityManagerFactoryUtils.getTransactionalEntityManager(emf);
+
+    System.out.println("EntityManager HashCode: " + em.hashCode());
+
+    return true;
+}
+
+▶ Observation:
+- Same hashCode throughout request
+- New hashCode for next HTTP request
+
+================================================================================
+SUMMARY (INTERVIEW READY)
+================================================================================
+
+- First Level Cache = Persistence Context
+- Enabled by default
+- Scope = EntityManager
+- Backed by StatefulPersistenceContext
+- Prevents duplicate DB calls
+- One EntityManager per HTTP request (commonly)
+- Ensures identity, consistency, and performance
+
+================================================================================
