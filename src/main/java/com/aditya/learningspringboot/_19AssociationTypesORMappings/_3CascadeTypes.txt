@@ -1,0 +1,278 @@
+========================================================
+JPA / Hibernate – CASCADE TYPES, FETCH TYPES & LAZY ISSUES
+========================================================
+
+--------------------------------------------------------
+1. CASCADE TYPES – THEORY (IN-DEPTH)
+--------------------------------------------------------
+
+Cascade defines:
+"Should an operation performed on the PARENT entity
+ automatically be propagated to the CHILD entity?"
+
+Cascade works ONLY in object state transitions,
+NOT database-level cascades.
+
+----------------------------------------
+CascadeType.ALL
+----------------------------------------
+Equivalent to:
+PERSIST + MERGE + REMOVE + REFRESH + DETACH
+
+Example:
+@OneToOne(cascade = CascadeType.ALL)
+private Address address;
+
+Behavior:
+- save(user)      → save(address)
+- update(user)    → update(address)
+- delete(user)    → delete(address)
+- refresh(user)   → refresh(address)
+- detach(user)    → detach(address)
+
+⚠ Risk:
+- Dangerous if child is shared
+- Deleting parent deletes child automatically
+
+----------------------------------------
+CascadeType.PERSIST
+----------------------------------------
+Propagates only persist() operation.
+
+Example:
+@OneToOne(cascade = CascadeType.PERSIST)
+private Address address;
+
+Behavior:
+- entityManager.persist(user)
+- address is also INSERTED
+
+❌ Does NOT work for:
+- merge
+- remove
+
+Use case:
+- When creating new parent + new child together
+
+----------------------------------------
+CascadeType.MERGE
+----------------------------------------
+Propagates merge() operation.
+
+Behavior:
+- entityManager.merge(user)
+- child entity is also merged
+
+Important:
+- Does NOT insert new child automatically
+- Child must already exist or be attached
+
+----------------------------------------
+CascadeType.REMOVE
+----------------------------------------
+Propagates remove() operation.
+
+Behavior:
+- delete parent
+- delete child
+
+⚠ VERY DANGEROUS:
+- If child is referenced elsewhere → data loss
+
+----------------------------------------
+CascadeType.REFRESH
+----------------------------------------
+Reloads entity state from database.
+
+Behavior:
+- entityManager.refresh(user)
+- child entity refreshed from DB
+
+Rarely used in real applications.
+
+----------------------------------------
+CascadeType.DETACH
+----------------------------------------
+Removes entity from persistence context.
+
+Behavior:
+- user becomes detached
+- child also becomes detached
+
+Used in advanced session management.
+
+--------------------------------------------------------
+2. FETCH TYPE – DOES CHILD ALWAYS LOAD WITH PARENT?
+--------------------------------------------------------
+
+Short answer:
+❌ NO — it depends on FETCH TYPE.
+
+----------------------------------------
+FetchType.EAGER
+----------------------------------------
+Definition:
+Child entity is loaded IMMEDIATELY with parent.
+
+Example:
+@OneToOne(fetch = FetchType.EAGER)
+private Address address;
+
+SQL behavior:
+- Either JOIN query
+- OR multiple SELECTs
+
+Default fetch behavior:
+- @OneToOne → EAGER (default)
+- @ManyToOne → EAGER (default)
+
+Problems:
+- Performance hit
+- Unnecessary joins
+- N+1 queries
+
+----------------------------------------
+FetchType.LAZY
+----------------------------------------
+Definition:
+Child entity is loaded ONLY WHEN ACCESSED.
+
+Example:
+@OneToOne(fetch = FetchType.LAZY)
+private Address address;
+
+SQL behavior:
+- Proxy object created
+- Actual query fired on first access
+
+Default fetch behavior:
+- @OneToMany → LAZY
+- @ManyToMany → LAZY
+
+--------------------------------------------------------
+3. LAZY LOADING + GET API ERROR (IMPORTANT INTERVIEW)
+--------------------------------------------------------
+
+----------------------------------------
+SCENARIO
+----------------------------------------
+
+@OneToOne(fetch = FetchType.LAZY)
+private Address address;
+
+Controller:
+@GetMapping("/users/{id}")
+public User getUser(@PathVariable Long id) {
+    return userService.getUser(id);
+}
+
+----------------------------------------
+WHAT HAPPENS INTERNALLY?
+----------------------------------------
+
+1. User entity is fetched
+2. Address is a PROXY object
+3. Hibernate session is CLOSED
+4. Jackson tries to serialize User
+5. Jackson accesses getAddress()
+6. Hibernate tries to load Address
+7. Session already closed
+
+❌ RESULT:
+LazyInitializationException
+
+----------------------------------------
+WHY ERROR HAPPENS IN GET BUT NOT POST?
+----------------------------------------
+
+POST flow:
+- JSON → Entity (Deserialization)
+- Jackson DOES NOT call getters
+- No lazy loading triggered
+- No exception
+
+GET flow:
+- Entity → JSON (Serialization)
+- Jackson CALLS getters
+- Lazy proxy accessed
+- Session closed → ERROR
+
+----------------------------------------
+COMMON MISCONCEPTION
+----------------------------------------
+@JsonIgnore DOES NOT change:
+- Lazy to Eager
+- Fetch strategy
+
+@JsonIgnore ONLY prevents serialization.
+
+----------------------------------------
+SOLUTION 1 – @JsonIgnore
+----------------------------------------
+
+@OneToOne(fetch = FetchType.LAZY)
+@JsonIgnore
+private Address address;
+
+Effect:
+- Jackson skips address
+- Lazy proxy never accessed
+- No exception
+
+Drawback:
+- Address never sent in API
+
+----------------------------------------
+SOLUTION 2 – DTO (BEST PRACTICE)
+----------------------------------------
+
+Entity:
+@Entity
+class User {
+    private Long id;
+    private String name;
+    private Address address;
+}
+
+DTO:
+class UserDTO {
+    private Long id;
+    private String name;
+    private String city;
+}
+
+Service:
+User user = repository.findById(id);
+UserDTO dto = new UserDTO();
+dto.setId(user.getId());
+dto.setName(user.getName());
+dto.setCity(user.getAddress().getCity());
+
+Why this works:
+- Lazy loading happens INSIDE transaction
+- DTO contains only required fields
+- No Hibernate proxies leak to controller
+
+----------------------------------------
+WHY DTO IS INDUSTRY STANDARD
+----------------------------------------
+
+- Avoids LazyInitializationException
+- Prevents over-fetching
+- Cleaner APIs
+- Decouples DB model from API contract
+- Better security
+
+--------------------------------------------------------
+FINAL INTERVIEW SUMMARY
+--------------------------------------------------------
+
+✔ Cascade controls ENTITY STATE propagation
+✔ Fetch controls DATA LOADING strategy
+✔ Lazy loading error happens during JSON serialization
+✔ @JsonIgnore prevents serialization, NOT lazy loading
+✔ DTO is the cleanest and safest solution
+
+========================================================
+END OF NOTES
+========================================================

@@ -165,3 +165,5 @@ SUMMARY (INTERVIEW READY)
 - Ensures identity, consistency, and performance
 
 ================================================================================
+
+Note: We can use entityManager.refresh() to bypass persistence context

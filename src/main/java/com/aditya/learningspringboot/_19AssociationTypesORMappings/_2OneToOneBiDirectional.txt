@@ -1,0 +1,331 @@
+/****************************************************************************************
+ * ONE-TO-ONE BIDIRECTIONAL MAPPING (JPA / HIBERNATE)
+ ****************************************************************************************
+ *
+ * DEFINITION
+ * ----------
+ * One-to-One Bidirectional means:
+ * - Both entities know about each other
+ * - Parent → Child
+ * - Child → Parent
+ *
+ * Example:
+ *   User  <----->  Address
+ *
+ * IMPORTANT POINTS
+ * ----------------
+ * 1. Table structure DOES NOT change compared to unidirectional
+ * 2. Only ONE table contains the foreign key (Owning side)
+ * 3. Bidirectional mapping exists ONLY at object level (Java objects)
+ * 4. mappedBy is used on the INVERSE side to avoid duplicate foreign keys
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * DATABASE TABLE STRUCTURE
+ ****************************************************************************************
+ *
+ * USER
+ * ----
+ * id (PK)
+ * name
+ * address_id (FK)  ---> ADDRESS.id
+ *
+ * ADDRESS
+ * -------
+ * id (PK)
+ * city
+ * state
+ *
+ * NOTE:
+ * -----
+ * - Same table structure as One-to-One Unidirectional
+ * - No extra column added for bidirectional
+ * - Difference is ONLY in Java entities
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * OWNING SIDE ENTITY (PARENT)
+ * User is the owning side because it holds the FOREIGN KEY
+ ****************************************************************************************/
+
+@Entity
+@Table(name = "user")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    /*
+     * @OneToOne defines one-to-one relationship
+     * @JoinColumn creates FK in USER table
+     *
+     * This is the OWNING SIDE
+     */
+    @OneToOne
+    @JoinColumn(name = "address_id", referencedColumnName = "id")
+    private Address address;
+
+    // getters and setters
+}
+
+
+/****************************************************************************************
+ * INVERSE SIDE ENTITY (CHILD)
+ * mappedBy tells Hibernate:
+ * "I am NOT owning the relationship"
+ ****************************************************************************************/
+
+@Entity
+@Table(name = "address")
+public class Address {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String city;
+    private String state;
+
+    /*
+     * mappedBy = "address"
+     * --------------------
+     * - "address" is the field name in User entity
+     * - No FK column is created here
+     * - This side is READ-ONLY from DB perspective
+     */
+    @OneToOne(mappedBy = "address")
+    private User user;
+
+    // getters and setters
+}
+
+
+/****************************************************************************************
+ * PROBLEM: INFINITE RECURSION DURING JSON SERIALIZATION
+ ****************************************************************************************
+ *
+ * Scenario:
+ * ---------
+ * userRepository.findById(id)
+ *
+ * Jackson serialization flow:
+ * User -> Address -> User -> Address -> User -> ...
+ *
+ * Result:
+ * -------
+ * ❌ StackOverflowError
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * SOLUTION 1: @JsonManagedReference & @JsonBackReference
+ ****************************************************************************************
+ *
+ * RULES:
+ * ------
+ * 1. @JsonManagedReference
+ *    - Used on OWNING entity (Parent)
+ *    - Tells Jackson: "Go ahead and serialize child"
+ *
+ * 2. @JsonBackReference
+ *    - Used on INVERSE entity (Child)
+ *    - Tells Jackson: "Do NOT serialize parent"
+ *
+ * LIMITATION:
+ * -----------
+ * ❌ Parent entity will NOT appear inside child JSON
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * USER ENTITY (WITH @JsonManagedReference)
+ ****************************************************************************************/
+
+@Entity
+@Table(name = "user")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    @OneToOne
+    @JoinColumn(name = "address_id", referencedColumnName = "id")
+    @JsonManagedReference
+    private Address address;
+
+    // getters and setters
+}
+
+
+/****************************************************************************************
+ * ADDRESS ENTITY (WITH @JsonBackReference)
+ ****************************************************************************************/
+
+@Entity
+@Table(name = "address")
+public class Address {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String city;
+    private String state;
+
+    @OneToOne(mappedBy = "address")
+    @JsonBackReference
+    private User user;
+
+    // getters and setters
+}
+
+
+/****************************************************************************************
+ * JSON OUTPUT (WITH Managed / Back Reference)
+ ****************************************************************************************
+ *
+ * User JSON:
+ * ----------
+ * {
+ *   "id": 1,
+ *   "name": "Aditya",
+ *   "address": {
+ *       "id": 10,
+ *       "city": "Pune",
+ *       "state": "MH"
+ *   }
+ * }
+ *
+ * Address JSON:
+ * -------------
+ * {
+ *   "id": 10,
+ *   "city": "Pune",
+ *   "state": "MH"
+ * }
+ *
+ * ❌ user object is LOST inside Address JSON
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * SOLUTION 2 (BEST PRACTICE): @JsonIdentityInfo
+ ****************************************************************************************
+ *
+ * WHY THIS IS BETTER:
+ * -------------------
+ * - Prevents recursion
+ * - Keeps BOTH parent & child references
+ * - Uses ID to resolve circular dependency
+ *
+ * RULE:
+ * -----
+ * @JsonIdentityInfo MUST be placed on BOTH entities
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * USER ENTITY WITH @JsonIdentityInfo
+ ****************************************************************************************/
+
+@Entity
+@Table(name = "user")
+@JsonIdentityInfo(
+    generator = ObjectIdGenerators.PropertyGenerator.class,
+    property = "id"
+)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    @OneToOne
+    @JoinColumn(name = "address_id", referencedColumnName = "id")
+    private Address address;
+
+    // getters and setters
+}
+
+
+/****************************************************************************************
+ * ADDRESS ENTITY WITH @JsonIdentityInfo
+ ****************************************************************************************/
+
+@Entity
+@Table(name = "address")
+@JsonIdentityInfo(
+    generator = ObjectIdGenerators.PropertyGenerator.class,
+    property = "id"
+)
+public class Address {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String city;
+    private String state;
+
+    @OneToOne(mappedBy = "address")
+    private User user;
+
+    // getters and setters
+}
+
+
+/****************************************************************************************
+ * JSON OUTPUT (WITH @JsonIdentityInfo)
+ ****************************************************************************************
+ *
+ * {
+ *   "id": 1,
+ *   "name": "Aditya",
+ *   "address": {
+ *       "id": 10,
+ *       "city": "Pune",
+ *       "state": "MH",
+ *       "user": 1
+ *   }
+ * }
+ *
+ * ✔ No recursion
+ * ✔ Parent preserved in child
+ * ✔ Industry-preferred solution
+ *
+ ****************************************************************************************/
+
+
+/****************************************************************************************
+ * INTERVIEW SUMMARY
+ ****************************************************************************************
+ *
+ * Q: Does bidirectional One-to-One change DB schema?
+ * A: ❌ No, only Java object references change
+ *
+ * Q: Why mappedBy is needed?
+ * A: To avoid duplicate foreign keys
+ *
+ * Q: What causes infinite recursion?
+ * A: Circular object references during JSON serialization
+ *
+ * Q: Best solution for serialization?
+ * A: @JsonIdentityInfo
+ *
+ ****************************************************************************************/

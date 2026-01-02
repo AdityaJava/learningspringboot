@@ -1,0 +1,284 @@
+/*
+====================================================================
+@OneToOne – UNIDIRECTIONAL (Parent → Child)
+Example: User → Address
+====================================================================
+
+SCENARIO OVERVIEW
+-----------------
+• Relationship Type     : One-to-One
+• Direction             : Unidirectional
+• Parent                : User
+• Child                 : Address
+• Owning Side           : User
+• Foreign Key Location  : USER table
+• Navigation            : User → Address only
+
+====================================================================
+1. THEORY
+====================================================================
+
+1. What is @OneToOne?
+--------------------
+@OneToOne represents a relationship where:
+• One record in Parent table maps to exactly one record in Child table.
+• In UNIDIRECTIONAL mapping, only Parent has the reference.
+• Child does NOT know about Parent.
+
+2. Ownership Rule
+-----------------
+• The entity holding the FOREIGN KEY is the owning side.
+• Here:
+    USER table contains address_id
+    → User is the owning entity.
+
+3. Default Behavior (IMPORTANT)
+-------------------------------
+If @OneToOne is used WITHOUT @JoinColumn:
+• Hibernate creates an EXTRA JOIN TABLE.
+• This is inefficient and NOT recommended.
+
+Always use @JoinColumn for clean schema.
+
+4. referencedColumnName
+-----------------------
+• Used when FK references a NON-PK or custom column.
+• Default value is PRIMARY KEY of target entity.
+
+5. Composite Primary Key Case
+-----------------------------
+If Address has multiple columns as PK:
+• Use @Embeddable + @EmbeddedId
+• Use @JoinColumns in User entity
+
+====================================================================
+2. ONE-TO-ONE WITHOUT @JoinColumn (❌ NOT RECOMMENDED)
+====================================================================
+Hibernate creates a JOIN TABLE automatically.
+*/
+
+@Entity
+@Table(name = "users")
+class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
+
+    private String name;
+
+    @OneToOne
+    private Address address;
+}
+
+@Entity
+@Table(name = "address")
+class Address {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long addressId;
+
+    private String city;
+    private String state;
+}
+
+/*
+Generated Table (UNWANTED):
+---------------------------
+user_address
+-------------
+user_id
+address_id
+*/
+
+====================================================================
+3. ONE-TO-ONE WITH @JoinColumn (✔ RECOMMENDED)
+====================================================================
+
+@Entity
+@Table(name = "users")
+class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
+
+    private String name;
+
+    @OneToOne
+    @JoinColumn(name = "address_id") // FK in USER table
+    private Address address;
+}
+
+@Entity
+@Table(name = "address")
+class Address {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long addressId;
+
+    private String city;
+    private String state;
+}
+
+/*
+Database Schema:
+----------------
+USERS
+-----
+user_id (PK)
+name
+address_id (FK → address.address_id)
+
+ADDRESS
+-------
+address_id (PK)
+city
+state
+*/
+
+====================================================================
+4. USING referencedColumnName
+====================================================================
+Use when referencing a non-default column.
+
+@Entity
+@Table(name = "users")
+class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
+
+    private String name;
+
+    @OneToOne
+    @JoinColumn(
+        name = "address_code",
+        referencedColumnName = "address_code"
+    )
+    private Address address;
+}
+
+@Entity
+@Table(name = "address")
+class Address {
+
+    @Id
+    @Column(name = "address_code")
+    private String addressCode;
+
+    private String city;
+    private String state;
+}
+
+/*
+Explanation:
+------------
+• name                  → column in USER table
+• referencedColumnName  → column in ADDRESS table
+• referenced column must be PK or UNIQUE
+*/
+
+====================================================================
+5. ONE-TO-ONE WITH COMPOSITE PRIMARY KEY (ADVANCED)
+====================================================================
+
+Example:
+Address Primary Key = (houseNo, pincode)
+
+--------------------
+STEP 1: Embeddable Key
+--------------------
+*/
+
+@Embeddable
+class AddressId implements Serializable {
+
+    private String houseNo;
+    private String pincode;
+}
+
+/*
+--------------------
+STEP 2: Address Entity
+--------------------
+*/
+
+@Entity
+@Table(name = "address")
+class Address {
+
+    @EmbeddedId
+    private AddressId addressId;
+
+    private String city;
+    private String state;
+}
+
+/*
+--------------------
+STEP 3: User Entity with Composite FK
+--------------------
+*/
+
+@Entity
+@Table(name = "users")
+class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long userId;
+
+    private String name;
+
+    @OneToOne
+    @JoinColumns({
+        @JoinColumn(
+            name = "house_no",
+            referencedColumnName = "houseNo"
+        ),
+        @JoinColumn(
+            name = "pincode",
+            referencedColumnName = "pincode"
+        )
+    })
+    private Address address;
+}
+
+/*
+Database Schema:
+----------------
+USERS
+-----
+user_id (PK)
+name
+house_no (FK)
+pincode  (FK)
+
+ADDRESS
+-------
+house_no (PK)
+pincode  (PK)
+city
+state
+*/
+
+====================================================================
+6. IMPORTANT INTERVIEW & PRACTICAL POINTS
+====================================================================
+
+/*
+1. Always use @JoinColumn in OneToOne to avoid join tables
+2. Unidirectional mapping is simpler and faster
+3. Foreign key always resides on owning side
+4. referencedColumnName defaults to PK
+5. Composite PK requires:
+   - @Embeddable
+   - @EmbeddedId
+   - @JoinColumns
+6. OneToOne automatically enforces UNIQUE constraint
+7. Prefer OneToOne only when truly required; otherwise use ManyToOne
+*/

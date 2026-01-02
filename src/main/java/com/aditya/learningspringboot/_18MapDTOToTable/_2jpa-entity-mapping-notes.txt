@@ -1,0 +1,316 @@
+/****************************************************************************************
+ * 1. @Table ANNOTATION
+ ****************************************************************************************
+ *
+ * @Table is a JPA annotation used at the ENTITY level.
+ * It allows you to customize:
+ *  - Table name
+ *  - Schema
+ *  - Unique constraints
+ *  - Indexes
+ *
+ * If @Table is NOT provided:
+ *  - Table name defaults to ENTITY name
+ */
+
+@Entity
+@Table(name = "users")
+public class User {
+}
+
+/****************************************************************************************
+ * 2. NAMING OF TABLE
+ ****************************************************************************************
+ *
+ * Table naming rules:
+ * - name attribute defines the actual DB table name
+ * - If omitted → table name = entity class name
+ *
+ * Best Practice:
+ * - Use lowercase + underscore for DB tables
+ */
+
+@Entity
+@Table(name = "app_user")
+public class AppUser {
+}
+
+/****************************************************************************************
+ * 3. SCHEMA (WHAT IS SCHEMA?)
+ ****************************************************************************************
+ *
+ * SCHEMA = logical namespace inside a database
+ * Example:
+ *   Database: company_db
+ *   Schemas: hr, finance, inventory
+ *
+ * Purpose:
+ * - Organize tables
+ * - Security & access control
+ *
+ * @Table(schema = "hr") means:
+ *   hr.employee
+ */
+
+@Entity
+@Table(name = "employee", schema = "hr")
+public class Employee {
+}
+
+/****************************************************************************************
+ * 4. @UniqueConstraint
+ ****************************************************************************************
+ *
+ * @UniqueConstraint enforces uniqueness at DB level
+ * Can be single-column or multi-column
+ */
+
+@Entity
+@Table(
+    name = "users",
+    uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"email"}),
+        @UniqueConstraint(columnNames = {"country", "mobile"})
+    }
+)
+public class UserAccount {
+
+    @Column(nullable = false)
+    private String email;
+
+    private String country;
+    private String mobile;
+}
+
+/****************************************************************************************
+ * 5. INDEXES
+ ****************************************************************************************
+ *
+ * Index improves SELECT query performance
+ * Defined at @Table level
+ */
+
+@Entity
+@Table(
+    name = "orders",
+    indexes = {
+        @Index(name = "idx_order_status", columnList = "status"),
+        @Index(name = "idx_order_user_date", columnList = "user_id, created_date")
+    }
+)
+public class Order {
+
+    private String status;
+    private Long userId;
+    private LocalDate createdDate;
+}
+
+/****************************************************************************************
+ * 6. @Column ANNOTATION
+ ****************************************************************************************
+ *
+ * Controls column mapping
+ *
+ * Common attributes:
+ * - name        → DB column name
+ * - nullable    → NOT NULL constraint
+ * - unique      → UNIQUE constraint
+ * - length      → VARCHAR length
+ * - updatable   → included in UPDATE SQL
+ * - insertable  → included in INSERT SQL
+ */
+
+@Entity
+public class Product {
+
+    @Column(name = "product_name", nullable = false, length = 100)
+    private String name;
+
+    @Column(unique = true)
+    private String sku;
+
+    @Column(nullable = false)
+    private BigDecimal price;
+}
+
+/****************************************************************************************
+ * 7. @Id ANNOTATION
+ ****************************************************************************************
+ *
+ * @Id marks PRIMARY KEY
+ * Every entity MUST have exactly one identifier
+ */
+
+@Entity
+public class Category {
+
+    @Id
+    private Long id;
+}
+
+/****************************************************************************************
+ * 8. COMPOSITE KEY HANDLING
+ ****************************************************************************************
+ *
+ * Two ways:
+ * 1) @Embeddable + @EmbeddedId (Preferred)
+ * 2) @IdClass
+ */
+
+/****************************************************************************************
+ * 8.1 @Embeddable + @EmbeddedId (Preferred)
+ ****************************************************************************************/
+
+@Embeddable
+public class OrderItemId implements Serializable {
+
+    private Long orderId;
+    private Long productId;
+
+    // equals() and hashCode() REQUIRED
+}
+
+@Entity
+public class OrderItem {
+
+    @EmbeddedId
+    private OrderItemId id;
+
+    private Integer quantity;
+}
+
+/****************************************************************************************
+ * 8.2 @IdClass APPROACH
+ ****************************************************************************************/
+
+public class EnrollmentId implements Serializable {
+
+    private Long studentId;
+    private Long courseId;
+
+    // equals() and hashCode() REQUIRED
+}
+
+@Entity
+@IdClass(EnrollmentId.class)
+public class Enrollment {
+
+    @Id
+    private Long studentId;
+
+    @Id
+    private Long courseId;
+
+    private LocalDate enrolledDate;
+}
+
+/****************************************************************************************
+ * RULES FOR @IdClass
+ ****************************************************************************************
+ *
+ * - IdClass fields MUST match entity @Id fields
+ * - Same names and types
+ * - Must implement Serializable
+ * - Must override equals() and hashCode()
+ */
+
+/****************************************************************************************
+ * 9. WHY equals() & hashCode() AND Serializable?
+ ****************************************************************************************
+ *
+ * equals() & hashCode():
+ * - Hibernate uses entity identity inside:
+ *   - Persistence Context (L1 cache)
+ *   - HashMap / Set
+ *
+ * Serializable:
+ * - Required for:
+ *   - Distributed cache
+ *   - Session replication
+ *   - JPA specification requirement
+ */
+
+/****************************************************************************************
+ * 10. @GeneratedValue
+ ****************************************************************************************
+ *
+ * Used to auto-generate PRIMARY KEY values
+ */
+
+@Entity
+public class Customer {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+}
+
+/****************************************************************************************
+ * GenerationType OPTIONS
+ ****************************************************************************************
+ *
+ * AUTO      → Hibernate chooses best strategy
+ * IDENTITY  → DB auto-increment (MySQL)
+ * SEQUENCE  → Database sequence (Postgres, Oracle)
+ * TABLE     → Separate table (slow, legacy)
+ */
+
+/****************************************************************************************
+ * 11. HIBERNATE CACHES SEQUENCES
+ ****************************************************************************************
+ *
+ * Hibernate uses sequence pooling:
+ * - Fetches sequence values in batches
+ * - Reduces DB round trips
+ *
+ * Example:
+ */
+
+@SequenceGenerator(
+    name = "user_seq",
+    sequenceName = "user_sequence",
+    allocationSize = 50
+)
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_seq")
+private Long id;
+
+/****************************************************************************************
+ * 12. IDENTITY FOR COMPOSITE KEY (TABLE GENERATOR)
+ ****************************************************************************************
+ *
+ * IDENTITY does NOT support composite keys
+ * TABLE generator can be used but is inefficient
+ */
+
+@TableGenerator(
+    name = "pk_gen",
+    table = "id_generator",
+    pkColumnName = "gen_name",
+    valueColumnName = "gen_value",
+    pkColumnValue = "order_item",
+    allocationSize = 1
+)
+@GeneratedValue(strategy = GenerationType.TABLE, generator = "pk_gen")
+private Long id;
+
+/****************************************************************************************
+ * WHY TABLE GENERATOR IS BAD?
+ ****************************************************************************************
+ *
+ * - Extra SELECT + UPDATE per ID
+ * - No DB-level optimization
+ * - Poor concurrency
+ * - Used only when SEQUENCE / IDENTITY not available
+ */
+
+/****************************************************************************************
+ * INTERVIEW SUMMARY
+ ****************************************************************************************
+ *
+ * - @Table → DB structure
+ * - @Column → column constraints
+ * - @Id → entity identity
+ * - Composite keys need equals/hashCode + Serializable
+ * - SEQUENCE is best for performance
+ * - TABLE generator = last option
+ ****************************************************************************************/
