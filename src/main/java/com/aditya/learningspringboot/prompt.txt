@@ -1,32 +1,29 @@
-Give theory for above and follow instructions also give theory in code window easy to copy. Go indepth
+1. OneToMany unidirectional
+  - Give theory and example or user and order: user can have many orders
+  - Reference exist only in 1 direction i:e from Parent to Child.
+  - since 1:MANY, means 1 parent have multiple child and we cannot store multiple child ids in 1 parent row,
+           so it creates new table and stores the mapping
+  - By default its lazy loading, means when query parents, child rows are not affected.
+  - Give working code example and also give how the tables look like
+  - (Recommended way) Also give theory and code for other way where I do not want third table and order side can have foreign key from user table.
+    like use @JoinColumn and also mention that and highlight that the foreign is there in order table though the @JoinColumn annotation is on
+    User table also mention this is not the case in OneToOne.
+  - Explain orphan removal in depth
 
-Cascade types
-1. Explain All like ALL, PERSIST, MERGE etc
-2. Does child entities always get loaded with parent entity? Explain Eager and Lazy loading then and also for whom it is default behaviour
-3. Also explain in detail that when we do lazy loading for onetoone mapping suppose and then call the get API it will produce error but will not
-   in POST call explain this in detail and to resolve we do @JsonIgnore this will remove it from lazy or eager and another way is to  use
-   DTO(Data Transfer Object) and remove
-
-OnetoOne
-A. OneToOne unidirectional.
-  - Parent to child.
-  - Give theory and example with User and Address.
-  - User Table has the foreign key of user_address table
-  - Also explain with and without @JoinColumn and referencedColumnName
-  - How to do when address table have composite primary key
-  -
-
-b. OneToOne Bidirectional
-  - Parent to child and child to Parent
-  - Table structure doesn't change
-  - Only the reference is there in object
-  - Give example with mappedBy for user and address
-  - Give the problem that it will go in recursion when we do get query we can use @JsonManagedReference and @JsonBackReference give example.
-  - Mention @JsonManagedReference should be used on owning entity this tells jackson to go ahead and serialize the child entity.
-  - Mention @JsonBackReference  should be used with inverse/Child entity and tells jackson to not serialize the parent entity. but we will loose parent entity in
-    child
-  - But if we want to serialize parent in child entity without recursion we need @JsonIdentityInfo on both child and parent. Give example
-    @JsonIdentityInfo(
-    generator = ObjectIdGenerators.PropertyGenerator.class,
-    property = "id"
-    )
+2. OneToMany bidirectional
+    - Give theory and example
+    - Explain parent side and child side and also owing side and inverseSide and mention that parent is not always the owing side then what is parent?
+      give definitions. Like in one to one for user and address the parent is user and child is address and here user holds foreign key so it is parent and
+      owing side but in case of OneToMany the Many side or child is owing side give example of user and orders. Parent is business concept like
+      without it the existence of child is of no value give your example and analogy chatgpt or correct my understanding
+    - And give here JoinColumn on owing side and mappedBy in inverse side
+    - We also need @JsonIdentityInfo to avoid recursion.
+    - DB structure doesn't change in uni and bidirectional
+    - Also here Parent is inverse side and JPA doesn't maintain the foreign key here so when creating orders we also need to set user in. Explain why we need
+      to do below
+        setOrder(List<Order> orders){
+        this.orders = orders;
+          for(Order order : orders){
+            order.setUser(this);
+          }
+        }
