@@ -1,0 +1,222 @@
+/***************************************************************************************************
+ * ONE-TO-MANY UNIDIRECTIONAL MAPPING (JPA / HIBERNATE)
+ *
+ * SCENARIO:
+ * ---------
+ * User (Parent)  ----->  Order (Child)
+ * A User can have MANY Orders.
+ * Reference exists ONLY from User to Order (unidirectional).
+ *
+ * ================================================================================================
+ * PART 1: DEFAULT ONE-TO-MANY UNIDIRECTIONAL (WITH THIRD / JOIN TABLE)
+ * ================================================================================================
+ *
+ * THEORY:
+ * ------
+ * 1. OneToMany means:
+ *    - One parent row can be associated with multiple child rows.
+ *
+ * 2. Unidirectional means:
+ *    - Navigation exists ONLY from Parent (User) to Child (Order).
+ *    - Order entity does NOT know about User.
+ *
+ * 3. Why a THIRD TABLE is created by default:
+ *    - Relational DB tables cannot store multiple foreign key values in a single column.
+ *    - So Hibernate creates an intermediate JOIN TABLE to store the mapping.
+ *
+ * 4. Default Fetch Type:
+ *    - @OneToMany is LAZY by default.
+ *    - When User is fetched, Orders are NOT fetched immediately.
+ *    - Orders are loaded only when getOrders() is called.
+ *
+ * 5. This approach works but is NOT recommended for large-scale systems:
+ *    - Extra table
+ *    - Extra joins
+ *    - Performance overhead
+ *
+ * --------------------------------------------------------------------------------
+ * TABLE STRUCTURE (DEFAULT BEHAVIOR)
+ * --------------------------------------------------------------------------------
+ *
+ * USER
+ * ----
+ * id | name
+ *
+ * ORDER
+ * -----
+ * id | product | price
+ *
+ * USER_ORDERS   <-- AUTO-GENERATED JOIN TABLE
+ * -----------
+ * user_id | order_id
+ *
+ **************************************************************************************************/
+
+import jakarta.persistence.*;
+import java.util.List;
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    // DEFAULT OneToMany (creates third table)
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Order> orders;
+
+    // getters and setters
+}
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String product;
+    private Double price;
+
+    // NO reference to User (Unidirectional)
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * PART 2: RECOMMENDED WAY (NO THIRD TABLE – FOREIGN KEY IN ORDER TABLE)
+ * ================================================================================================
+ *
+ * THEORY:
+ * ------
+ * 1. We still keep the relationship UNIDIRECTIONAL (User -> Order).
+ *
+ * 2. We tell Hibernate:
+ *    - "Do NOT create a join table"
+ *    - "Put the foreign key in ORDER table"
+ *
+ * 3. This is achieved using @JoinColumn on User side.
+ *
+ * IMPORTANT & INTERVIEW-CRITICAL POINT:
+ * ------------------------------------
+ * - Even though @JoinColumn is written on User entity,
+ *   the FOREIGN KEY column is created in ORDER table.
+ *
+ * - This is DIFFERENT from OneToOne:
+ *   - In OneToOne, ownership and FK placement logic differs.
+ *   - In OneToMany, FK ALWAYS goes to the MANY side (Order).
+ *
+ * 4. Benefits:
+ *    - No extra join table
+ *    - Cleaner schema
+ *    - Better performance
+ *
+ * --------------------------------------------------------------------------------
+ * TABLE STRUCTURE (RECOMMENDED WAY)
+ * --------------------------------------------------------------------------------
+ *
+ * USER
+ * ----
+ * id | name
+ *
+ * ORDER
+ * -----
+ * id | product | price | user_id (FOREIGN KEY)
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    @OneToMany(fetch = FetchType.LAZY,
+               cascade = CascadeType.ALL,
+               orphanRemoval = true)
+    @JoinColumn(name = "user_id")
+    // FK is created in ORDER table, NOT in USER table
+    private List<Order> orders;
+
+    // getters and setters
+}
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String product;
+    private Double price;
+
+    // Still NO reference to User
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * PART 3: ORPHAN REMOVAL (DEEP EXPLANATION)
+ * ================================================================================================
+ *
+ * orphanRemoval = true
+ *
+ * WHAT IS AN ORPHAN?
+ * -----------------
+ * - A child entity (Order) that is NO LONGER associated with its parent (User).
+ *
+ * WHAT orphanRemoval DOES:
+ * -----------------------
+ * - If an Order is removed from User's orders list,
+ *   Hibernate will DELETE that Order from the database.
+ *
+ * EXAMPLE:
+ * --------
+ * user.getOrders().remove(order1);
+ *
+ * RESULT:
+ * -------
+ * - order1 row is DELETED from ORDER table
+ *
+ * WITHOUT orphanRemoval:
+ * ---------------------
+ * - The association is removed
+ * - But the Order row still remains in DB (dangling data)
+ *
+ * orphanRemoval vs CascadeType.REMOVE:
+ * -----------------------------------
+ * CascadeType.REMOVE:
+ * - Deletes children ONLY when parent is deleted.
+ *
+ * orphanRemoval:
+ * - Deletes child when it is REMOVED FROM COLLECTION.
+ *
+ * BEST PRACTICE:
+ * --------------
+ * - Use orphanRemoval = true when:
+ *   - Child lifecycle is fully dependent on parent
+ *   - Child should not exist without parent
+ *
+ **************************************************************************************************/
+
+/*
+ * INTERVIEW SUMMARY:
+ * -----------------
+ * - OneToMany is LAZY by default
+ * - Unidirectional OneToMany creates JOIN TABLE by default
+ * - Recommended approach: @JoinColumn on parent
+ * - FK always goes to MANY side
+ * - orphanRemoval removes child rows automatically
+ * - @JoinColumn behavior in OneToMany is DIFFERENT from OneToOne
+ */

@@ -1,0 +1,216 @@
+/***************************************************************************************************
+ * MANY-TO-MANY BIDIRECTIONAL MAPPING (JPA / HIBERNATE)
+ *
+ * SCENARIO:
+ * ---------
+ * Order  <========>  Product
+ *
+ * One Order can have MANY Products
+ * One Product can belong to MANY Orders
+ *
+ * ================================================================================================
+ * CORE THEORY
+ * ================================================================================================
+ *
+ * 1. Parent–Child Concept?
+ * ------------------------
+ * ❌ There is NO parent–child concept in ManyToMany.
+ *
+ * Why?
+ * ----
+ * - Order can exist without Product
+ * - Product can exist without Order
+ * - Neither entity controls the lifecycle of the other
+ *
+ * 👉 Relationship is ASSOCIATIVE, not HIERARCHICAL.
+ *
+ * 2. Bidirectional Meaning:
+ * --------------------------
+ * - Both entities are aware of each other.
+ * - Navigation exists from BOTH sides.
+ *
+ * Order -> Products
+ * Product -> Orders
+ *
+ * 3. Join Table is ALWAYS REQUIRED:
+ * --------------------------------
+ * - Relational DB cannot store many-to-many directly.
+ * - A JOIN TABLE is mandatory.
+ *
+ * 4. Owning Side vs Inverse Side:
+ * -------------------------------
+ * - Owning Side:
+ *   - Entity that DEFINES the @JoinTable
+ *   - Responsible for INSERT / UPDATE of join table rows
+ *
+ * - Inverse Side:
+ *   - Uses mappedBy
+ *   - Reflects relationship but does NOT manage it
+ *
+ * 5. IMPORTANT:
+ * -------------
+ * - Only ONE owning side is allowed
+ * - Only owning side updates JOIN TABLE
+ *
+ **************************************************************************************************/
+
+import jakarta.persistence.*;
+import java.util.List;
+
+/***************************************************************************************************
+ * ================================================================================================
+ * OWNING SIDE (ORDER)
+ * ================================================================================================
+ *
+ * - Order is chosen as OWNING SIDE
+ * - @JoinTable is defined here
+ * - This entity controls JOIN TABLE updates
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String orderNumber;
+
+    @ManyToMany(fetch = FetchType.LAZY,
+                cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(
+        name = "order_products",
+        joinColumns = @JoinColumn(name = "order_id"),
+        inverseJoinColumns = @JoinColumn(name = "product_id")
+    )
+    private List<Product> products;
+
+    // Utility method to keep both sides in sync
+    public void addProduct(Product product) {
+        products.add(product);
+        product.getOrders().add(this);
+    }
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * INVERSE SIDE (PRODUCT)
+ * ================================================================================================
+ *
+ * - Product is INVERSE SIDE
+ * - mappedBy points to owning side field
+ * - No @JoinTable here
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "products")
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private Double price;
+
+    @ManyToMany(mappedBy = "products", fetch = FetchType.LAZY)
+    private List<Order> orders;
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * DATABASE STRUCTURE
+ * ================================================================================================
+ *
+ * ORDER
+ * -----
+ * id | order_number
+ *
+ * PRODUCT
+ * -------
+ * id | name | price
+ *
+ * ORDER_PRODUCTS  (JOIN TABLE)
+ * --------------
+ * order_id | product_id
+ *
+ * NOTE:
+ * -----
+ * - SAME DB structure for Uni & Bi directional
+ * - Difference is ONLY object navigation
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * RULES FOR CHOOSING OWNING SIDE (VERY IMPORTANT)
+ * ================================================================================================
+ *
+ * 1. Only ONE owning side is allowed
+ * ---------------------------------
+ * - JPA does not allow two @JoinTable definitions
+ *
+ * 2. Owning side SHOULD be:
+ * -------------------------
+ * ✔ The side where relationship changes are initiated most often
+ * ✔ The side that makes more business sense to "control" association
+ *
+ * Example:
+ * --------
+ * - Orders are created frequently
+ * - Products are mostly static
+ * 👉 Make Order the owning side (GOOD CHOICE)
+ *
+ * 3. Inverse Side:
+ * ----------------
+ * - Uses mappedBy
+ * - Never defines @JoinTable
+ * - Changes here are IGNORED for DB updates
+ *
+ * 4. Cascade REMOVE is DANGEROUS:
+ * -------------------------------
+ * - Removing Order may delete Products
+ * - Products may be shared with other Orders
+ *
+ * ✔ Prefer PERSIST, MERGE
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * WHY WE MUST SYNC BOTH SIDES MANUALLY
+ * ================================================================================================
+ *
+ * JPA DOES NOT auto-sync bidirectional associations.
+ *
+ * If you add Product only to Order.products:
+ * ------------------------------------------
+ * - Join table will update (owning side)
+ * - Product.orders will be OUT OF SYNC in memory
+ *
+ * Hence utility methods (addProduct / removeProduct) are BEST PRACTICE.
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * INTERVIEW SUMMARY (MEMORIZE THIS)
+ * ================================================================================================
+ *
+ * ✔ No parent-child concept
+ * ✔ Join table is mandatory
+ * ✔ Only one owning side
+ * ✔ Owning side defines @JoinTable
+ * ✔ Inverse side uses mappedBy
+ * ✔ DB structure same for Uni & Bi
+ * ✔ Owning side chosen by business usage
+ * ✔ Manual synchronization required
+ *
+ **************************************************************************************************/

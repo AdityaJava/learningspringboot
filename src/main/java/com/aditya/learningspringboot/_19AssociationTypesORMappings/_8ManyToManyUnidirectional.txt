@@ -1,0 +1,230 @@
+/***************************************************************************************************
+ * MANY-TO-MANY UNIDIRECTIONAL MAPPING (JPA / HIBERNATE)
+ *
+ * SCENARIO:
+ * ---------
+ * Order  ----->  Product
+ *
+ * One Order can have MANY Products
+ * One Product can belong to MANY Orders
+ *
+ * ================================================================================================
+ * CORE THEORY
+ * ================================================================================================
+ *
+ * 1. What is ManyToMany?
+ * ---------------------
+ * - Both sides can have multiple associations.
+ * - Cardinality is MANY ↔ MANY.
+ *
+ * 2. Parent–Child Concept?
+ * ------------------------
+ * ❌ There is NO Parent–Child concept here.
+ *
+ * Why?
+ * ----
+ * - Product can exist without Order.
+ * - Order can exist without Product.
+ * - Neither entity "owns the lifecycle" of the other.
+ *
+ * 👉 Relationship is ASSOCIATIVE, not hierarchical.
+ *
+ * 3. Unidirectional Meaning:
+ * --------------------------
+ * - Reference exists ONLY in ONE direction.
+ * - Order knows Products.
+ * - Product does NOT know Orders.
+ *
+ * 4. Why Join Table is MANDATORY?
+ * -------------------------------
+ * - Relational DB cannot store multiple values in one column.
+ * - Neither side can hold FK alone.
+ *
+ * 👉 A JOIN TABLE is ALWAYS required in ManyToMany.
+ *
+ * 5. Owning Side:
+ * ---------------
+ * - In Unidirectional ManyToMany, the single side is the owning side.
+ * - @JoinTable MUST be defined here.
+ *
+ * 6. Fetch Type:
+ * --------------
+ * - Default = LAZY (good for performance).
+ *
+ * 7. Cascade:
+ * -----------
+ * - Use carefully.
+ * - Typically:
+ *   - PERSIST / MERGE → OK
+ *   - REMOVE → ❌ dangerous (may delete shared products)
+ *
+ **************************************************************************************************/
+
+import jakarta.persistence.*;
+import java.util.List;
+
+/***************************************************************************************************
+ * ================================================================================================
+ * PRODUCT ENTITY
+ * ================================================================================================
+ *
+ * - No reference to Order
+ * - Independent entity
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "products")
+public class Product {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private Double price;
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * ORDER ENTITY (OWING SIDE)
+ * ================================================================================================
+ *
+ * - Holds relationship
+ * - Defines JOIN TABLE
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String orderNumber;
+
+    @ManyToMany(fetch = FetchType.LAZY,
+                cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(
+        name = "order_products",
+        joinColumns = @JoinColumn(name = "order_id"),
+        inverseJoinColumns = @JoinColumn(name = "product_id")
+    )
+    private List<Product> products;
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * DATABASE STRUCTURE
+ * ================================================================================================
+ *
+ * ORDER
+ * -----
+ * id | order_number
+ *
+ * PRODUCT
+ * -------
+ * id | name | price
+ *
+ * ORDER_PRODUCTS  (JOIN TABLE)
+ * --------------
+ * order_id | product_id
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * INSERTING ORDER WITH EXISTING PRODUCTS (FULL WORKING FLOW)
+ * ================================================================================================
+ *
+ * ASSUMPTION:
+ * -----------
+ * - Products already exist in DB.
+ *
+ * GOAL:
+ * -----
+ * - Create new Order
+ * - Associate existing Products
+ * - Persist Order only
+ *
+ **************************************************************************************************/
+
+@Service
+public class OrderService {
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Transactional
+    public void createOrderWithExistingProducts() {
+
+        // 1️⃣ Fetch existing products
+        Product p1 = entityManager.find(Product.class, 1L);
+        Product p2 = entityManager.find(Product.class, 2L);
+
+        // 2️⃣ Create new Order
+        Order order = new Order();
+        order.setOrderNumber("ORD-101");
+        order.setProducts(List.of(p1, p2));
+
+        // 3️⃣ Persist Order
+        // - Hibernate inserts into ORDER table
+        // - Hibernate inserts into ORDER_PRODUCTS join table
+        entityManager.persist(order);
+    }
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * IMPORTANT BEHAVIOR NOTES (INTERVIEW CRITICAL)
+ * ================================================================================================
+ *
+ * 1. No FK in ORDER or PRODUCT table.
+ *    - Relationship lives ONLY in JOIN TABLE.
+ *
+ * 2. Removing a Product from Order.products:
+ *    - Deletes row from JOIN TABLE
+ *    - DOES NOT delete Product
+ *
+ * 3. Cascade REMOVE is dangerous:
+ *    - Removing Order may delete Product
+ *    - Product may be shared by other Orders
+ *
+ * 4. Uni vs Bi-directional:
+ *    - DB structure is SAME
+ *    - Only object navigation changes
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * REAL-WORLD EXAMPLES
+ * ================================================================================================
+ *
+ * - Order ↔ Product
+ * - Student ↔ Course
+ * - User ↔ Role
+ * - Movie ↔ Actor
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * INTERVIEW SUMMARY (MEMORIZE)
+ * ================================================================================================
+ *
+ * ✔ No parent-child concept
+ * ✔ Join table is mandatory
+ * ✔ One owning side in unidirectional
+ * ✔ @JoinTable defines mapping
+ * ✔ Safe cascades: PERSIST, MERGE
+ * ✔ REMOVE is risky
+ * ✔ LAZY by default
+ *
+ **************************************************************************************************/

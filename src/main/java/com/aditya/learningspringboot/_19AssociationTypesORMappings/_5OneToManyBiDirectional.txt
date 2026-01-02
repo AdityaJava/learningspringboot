@@ -1,0 +1,223 @@
+/***************************************************************************************************
+ * ONE-TO-MANY BIDIRECTIONAL MAPPING (JPA / HIBERNATE)
+ *
+ * SCENARIO:
+ * ---------
+ * User (Parent)  <------>  Order (Child)
+ * A User can have MANY Orders.
+ * Order belongs to ONE User.
+ *
+ * ================================================================================================
+ * CORE DEFINITIONS (VERY IMPORTANT – INTERVIEW GOLD)
+ * ================================================================================================
+ *
+ * 1. Parent vs Child (BUSINESS CONCEPT)
+ * ------------------------------------
+ * - Parent:
+ *   A business-meaningful aggregate root.
+ *   Child's existence has NO VALUE without parent.
+ *
+ *   Example:
+ *   - User is Parent
+ *   - Order is Child
+ *   - An Order without a User is meaningless in business.
+ *
+ *   👉 Parent is NOT decided by foreign key location.
+ *   👉 Parent is decided by BUSINESS OWNERSHIP.
+ *
+ * 2. Owning Side vs Inverse Side (JPA CONCEPT)
+ * -------------------------------------------
+ * - Owning Side:
+ *   - Entity that OWNS the foreign key column in DB.
+ *   - Only owning side updates the FK.
+ *
+ * - Inverse Side:
+ *   - Entity that does NOT own the FK.
+ *   - Uses mappedBy.
+ *   - Changes here are IGNORED for FK updates.
+ *
+ * IMPORTANT CONFUSION CLARIFICATION:
+ * ---------------------------------
+ * - Parent ≠ Owning Side (always)
+ *
+ * OneToOne Example:
+ * -----------------
+ * User ↔ Address
+ * - FK in USER table
+ * - User is Parent
+ * - User is Owning Side
+ *
+ * OneToMany Example:
+ * ------------------
+ * User ↔ Order
+ * - FK in ORDER table
+ * - User is Parent (business)
+ * - Order is Owning Side (JPA)
+ *
+ * ANALOGY:
+ * --------
+ * Think of Parent as "OWNER OF MEANING"
+ * Think of Owning Side as "OWNER OF DATABASE COLUMN"
+ *
+ **************************************************************************************************/
+
+import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+import java.util.List;
+
+/***************************************************************************************************
+ * ================================================================================================
+ * CHILD ENTITY (OWNING SIDE)
+ * ================================================================================================
+ *
+ * - MANY side is ALWAYS the Owning Side in OneToMany
+ * - Foreign Key exists here
+ * - @JoinColumn MUST be here
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "orders")
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id"
+)
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String product;
+    private Double price;
+
+    // Owning Side
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")   // FK column
+    private User user;
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * PARENT ENTITY (INVERSE SIDE)
+ * ================================================================================================
+ *
+ * - User is Parent (business)
+ * - But NOT the owning side
+ * - mappedBy tells Hibernate:
+ *   "Foreign key is managed by Order.user"
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "users")
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id"
+)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    // Inverse Side
+    @OneToMany(
+            mappedBy = "user",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY
+    )
+    private List<Order> orders;
+
+    /***********************************************************************************************
+     * WHY THIS METHOD IS REQUIRED (CRITICAL CONCEPT)
+     ***********************************************************************************************
+     *
+     * JPA DOES NOT synchronize both sides automatically.
+     *
+     * Since User is INVERSE SIDE:
+     * - JPA ignores FK changes made only here.
+     * - FK is maintained ONLY from Order (owning side).
+     *
+     * If we do NOT set order.setUser(this):
+     * - user_id in ORDER table will be NULL
+     * - Orders will NOT be associated in DB
+     *
+     * This is WHY we must maintain BOTH SIDES manually.
+     *
+     **********************************************************************************************/
+    public void setOrders(List<Order> orders) {
+        this.orders = orders;
+        for (Order order : orders) {
+            order.setUser(this); // VERY IMPORTANT
+        }
+    }
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * DATABASE STRUCTURE (SAME FOR UNI & BI-DIRECTIONAL)
+ * ================================================================================================
+ *
+ * USER
+ * ----
+ * id | name
+ *
+ * ORDER
+ * -----
+ * id | product | price | user_id (FK)
+ *
+ * NOTE:
+ * -----
+ * - Uni-directional or Bi-directional DOES NOT change DB structure.
+ * - Only object navigation changes.
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * JSON INFINITE RECURSION PROBLEM
+ * ================================================================================================
+ *
+ * Problem:
+ * --------
+ * User -> Orders -> User -> Orders -> ...
+ *
+ * Solution:
+ * ---------
+ * @JsonIdentityInfo
+ * - Serializes object once
+ * - Reuses reference using ID
+ *
+ * Why NOT @JsonIgnore here?
+ * ------------------------
+ * - @JsonIgnore breaks bidirectional navigation in response
+ * - @JsonIdentityInfo keeps both sides safely
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * INTERVIEW SUMMARY (MUST REMEMBER)
+ * ================================================================================================
+ *
+ * - Parent is BUSINESS concept, not FK holder
+ * - Owning side is DB/FK concept
+ * - In OneToMany:
+ *   - MANY side is Owning Side
+ *   - ONE side is Inverse Side
+ * - mappedBy means "I do NOT own FK"
+ * - JPA updates FK only from Owning Side
+ * - Must manually sync both sides
+ * - DB structure same for Uni & Bi
+ * - Use @JsonIdentityInfo to avoid recursion
+ *
+ **************************************************************************************************/

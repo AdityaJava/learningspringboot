@@ -19,7 +19,7 @@
     - And give here JoinColumn on owing side and mappedBy in inverse side
     - We also need @JsonIdentityInfo to avoid recursion.
     - DB structure doesn't change in uni and bidirectional
-    - Also here Parent is inverse side and JPA doesn't maintain the foreign key here so when creating orders we also need to set user in. Explain why we need
+    - Also here Parent is inverse side and JPA doesn't maintain the foreign key here so when creating User we also need to set user in order entity Explain why we need
       to do below
         setOrder(List<Order> orders){
         this.orders = orders;
@@ -27,3 +27,30 @@
             order.setUser(this);
           }
         }
+
+ 3. ManyToOne Unidirectional
+  - In this, we generally talk from the perspective of child like: Many orders can be
+  - Parent doesn't have mapping for child
+  - Give example
+
+ 4. ManyToOne bidirectional
+    - This is same as OneToMany bidirectional. Chatgpt correct me if I am wrong
+
+ 5. ManyToMany unidirectional
+   - There is no parent child concept
+   - Reference from one way only
+   - Give full working example
+   - Give example of Order and Product
+   - @JoinTable annotation
+   - Also give full working code for inserting order for product existing in DB
+
+ 6. ManyToMany Bidirectional
+  - There is no parent child concept
+  - Reference on both side
+  - We can make anyone owing and any one inverse side
+  - The entity with @JoinTable(We are giving this entity the responsibility to create new table) annotation is owing side and @ManyToMany
+     with MappedBy is inverse side. Give example Make Order as owing side
+  - What is rule for making owing side?
+
+
+

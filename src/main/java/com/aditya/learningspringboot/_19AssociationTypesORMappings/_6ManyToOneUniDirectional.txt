@@ -1,0 +1,174 @@
+/***************************************************************************************************
+ * MANY-TO-ONE UNIDIRECTIONAL MAPPING (JPA / HIBERNATE)
+ *
+ * SCENARIO:
+ * ---------
+ * MANY Orders  --->  ONE User
+ *
+ * We always talk from CHILD perspective:
+ * - Many Orders belong to One User
+ *
+ * ================================================================================================
+ * CORE THEORY
+ * ================================================================================================
+ *
+ * 1. What is ManyToOne Unidirectional?
+ * -----------------------------------
+ * - Relationship exists ONLY from child to parent.
+ * - Child knows about Parent.
+ * - Parent does NOT know about Child.
+ *
+ * Example:
+ * --------
+ * Order  --->  User
+ * User has NO collection of orders.
+ *
+ * 2. Business Meaning:
+ * --------------------
+ * - Order cannot exist without User (business-wise).
+ * - User can exist without Order.
+ *
+ * 3. Owning Side:
+ * ---------------
+ * - MANY side (Order) is ALWAYS the owning side.
+ * - Foreign key is stored in the MANY side table.
+ *
+ * 4. Why this mapping is VERY COMMON?
+ * ----------------------------------
+ * - Simple
+ * - No extra join table
+ * - No bidirectional complexity
+ * - No recursion issues in JSON
+ *
+ * 5. Fetch Type:
+ * --------------
+ * - @ManyToOne is EAGER by default (IMPORTANT)
+ * - When Order is fetched, User is fetched automatically.
+ *
+ * 👉 In real projects, we usually override it to LAZY.
+ *
+ * 6. Cascade:
+ * -----------
+ * - Cascade is OPTIONAL here.
+ * - Usually we DO NOT cascade REMOVE from child to parent.
+ * - Because deleting one Order should NOT delete User.
+ *
+ **************************************************************************************************/
+
+import jakarta.persistence.*;
+
+/***************************************************************************************************
+ * ================================================================================================
+ * PARENT ENTITY (NO MAPPING TO CHILD)
+ * ================================================================================================
+ *
+ * - User does NOT know Orders exist
+ * - Completely independent entity
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    // No @OneToMany here
+    // No idea about Orders
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * CHILD ENTITY (OWING SIDE)
+ * ================================================================================================
+ *
+ * - Order holds the foreign key
+ * - Relationship is defined ONLY here
+ *
+ **************************************************************************************************/
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String product;
+    private Double price;
+
+    /*
+     * Many Orders -> One User
+     *
+     * Default fetch = EAGER
+     * Recommended override = LAZY
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    // getters and setters
+}
+
+/***************************************************************************************************
+ * ================================================================================================
+ * DATABASE STRUCTURE
+ * ================================================================================================
+ *
+ * USER
+ * ----
+ * id | name
+ *
+ * ORDER
+ * -----
+ * id | product | price | user_id (FK)
+ *
+ * NOTES:
+ * ------
+ * - No join table
+ * - Foreign key is always in ORDER table
+ * - Same DB structure as OneToMany (recommended approach)
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * WHY & WHEN TO USE MANY-TO-ONE UNIDIRECTIONAL
+ * ================================================================================================
+ *
+ * USE WHEN:
+ * ---------
+ * - Parent does not need to navigate children
+ * - You want simple & clean mapping
+ * - You want to avoid bidirectional complexity
+ *
+ * REAL-WORLD EXAMPLES:
+ * -------------------
+ * - Order -> Customer
+ * - Comment -> Post
+ * - Employee -> Department
+ * - Invoice -> Client
+ *
+ **************************************************************************************************/
+
+/***************************************************************************************************
+ * ================================================================================================
+ * INTERVIEW TAKEAWAYS
+ * ================================================================================================
+ *
+ * - ManyToOne is defined from CHILD perspective
+ * - Child is always the owning side
+ * - Parent has no mapping
+ * - FK always exists in MANY side table
+ * - @ManyToOne is EAGER by default
+ * - Override to LAZY in real projects
+ * - Safer than bidirectional mapping
+ *
+ **************************************************************************************************/
